@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "maxLength": 60,
+      "required": true,
+      "primaryKey": true
+    },
+    "address": {
+      "type": "string",
+      "maxLength": 45
+    },
+    "code": {
+      "type": "string",
+      "maxLength": 6
+    }
+  }
+}

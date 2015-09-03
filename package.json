@@ -1,0 +1,46 @@
+{
+  "name": "koa-swagger-router",
+  "version": "0.0.0",
+  "description": "A koa router that builds a full swagger specification",
+  "homepage": "",
+  "repository": "andrglo/koa-swagger-router",
+  "author": {
+    "name": "Andre Gloria",
+    "email": "andredagloria@gmail.com",
+    "url": "andrglo.com"
+  },
+  "files": [
+    "src"
+  ],
+  "main": "src/index.js",
+  "keywords": [
+    "koa",
+    "swagger",
+    "router"
+  ],
+  "devDependencies": {
+    "chai": "^3.2.0",
+    "gulp": "^3.6.0",
+    "gulp-coveralls": "^0.1.0",
+    "gulp-eslint": "^0.15.0",
+    "gulp-istanbul": "^0.9.0",
+    "gulp-mocha": "^2.0.0",
+    "gulp-nsp": "^0.4.5",
+    "gulp-util": "^3.0.6",
+    "json-schema-entity": "^0.3.1",
+    "koa": "^1.0.0",
+    "pg-cr-layer": "0.0.4",
+    "supertest": "^1.1.0"
+  },
+  "scripts": {
+    "prepublish": "gulp prepublish",
+    "test": "gulp"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "co-body": "^4.0.0",
+    "js-yaml": "^3.4.0",
+    "koa-compose": "^2.3.0",
+    "koa-resource-router": "^0.4.0"
+  }
+}
