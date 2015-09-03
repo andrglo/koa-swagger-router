@@ -48,6 +48,7 @@ before(function(done) {
         })
         .then(function() {
           pgOptions.entity = jse('person', personSchema, {db: pgOptions.db});
+          pgOptions.entity.useTimestamps();
           return pgOptions.entity.createTables();
         });
     })

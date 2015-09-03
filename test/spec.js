@@ -32,13 +32,49 @@ module.exports = function(options) {
     agent = request(http.createServer(app.callback()));
   });
 
-  describe('fetching', function() {
+  describe('resource', function() {
+    var charlie;
     it('no person exists', function(done) {
       agent
         .get('/person/8')
         .set('Accept', 'application/json')
         .expect('Content-Type', /text/)
         .expect(404)
+        .end(log(done));
+    });
+    it('should create a new person', function(done) {
+      let now = (new Date()).toISOString();
+      agent
+        .post('/person')
+        .set('Content-Type', 'application/json')
+        .send({
+          name: 'Charlie'
+        })
+        .expect('Content-Type', /json/)
+        .expect(201)
+        .expect(function(res) {
+          let record = charlie = res.body;
+          record.should.have.property('name');
+          record.should.have.property('createdAt');
+          record.should.have.property('updatedAt');
+          record.createdAt.should.equal(record.updatedAt);
+          expect(record.createdAt).to.be.a('string');
+          expect(record.createdAt).to.above(now);
+        })
+        .end(log(done));
+    });
+    it('should update address', function(done) {
+      charlie.address = 'Victoria St';
+      agent
+        .put('/person/' + charlie.name)
+        .send(charlie)
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .expect(function(res) {
+          let record = charlie = res.body;
+          record.should.have.property('address');
+          record.should.not.have.property('code');
+        })
         .end(log(done));
     });
   });

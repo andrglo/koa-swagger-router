@@ -74,20 +74,14 @@ function actions(collection) {
 
     update: function*() {
       var body = yield parse(this);
-      var key = {
-        id: this.params.id
-      };
-      this.body = yield collection.update(body, key);
+      this.body = yield collection.update(body, buildCriteria(this.params));
       if (!this.body) {
         this.throw(404);
       }
     },
 
     show: function*() {
-      let key = Object.keys(this.params)[0];
-      let where = {where: {}};
-      where[key] = this.params[key];
-      let recordset = yield collection.fetch(where);
+      let recordset = yield collection.fetch(buildCriteria(this.params));
       if (!recordset.length) {
         this.throw(404);
       }
@@ -95,8 +89,15 @@ function actions(collection) {
     },
 
     destroy: function*() {
-      yield collection.destroy({where: {id: this.params.id}});
+      yield collection.destroy(buildCriteria(this.params));
       this.status = 204;
     }
   };
+}
+
+function buildCriteria(params) {
+  let key = Object.keys(params)[0];
+  let criteria = {where: {}};
+  criteria.where[key] = params[key];
+  return criteria;
 }
