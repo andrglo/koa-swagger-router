@@ -27,11 +27,12 @@ module.exports = function(options) {
   before(function() {
     var app = koa();
     var router = routerFactory(__dirname + '/spec.yaml');
-    router.resource('person', options.entity, {id: 'name'});
-    //router.resource('person', options.entity, entityActions('name'), {
-    //  person: options.entity.getSchema()
-    //});
-    app.use(router.middleware());
+    router.add('person',
+      options.entity,
+      entityMethods(options.entity, 'name'), {
+        person: options.entity.getSchema()
+      });
+    app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });
 
@@ -84,75 +85,85 @@ module.exports = function(options) {
 
 };
 
-//function entityActions(entity, id) {
-//
-//  return {
-//
-//    get: {
-//      parameters: {
-//        parse: function(query) {
-//          var criteria;
-//          if (query.criteria) {
-//            criteria = JSON.parse(query.criteria);
-//          } else {
-//            criteria = {
-//              where: query
-//            };
-//          }
-//          return [criteria];
-//        }
-//      },
-//      response: {
-//        type: 'array',
-//        schema: entity.getSchema()
-//      }
-//    },
-//    post: {},
-//    [`put :${id}`]: {
-//      parameters: {
-//        parse: function(id, body) {
-//          return [body, buildCriteria(id)];
-//        }
-//      },
-//      response: {
-//        type: 'array',
-//        schema: entity.getSchema()
-//      }
-//    },
-//    [`get :${id}`]: {
-//      parameters: {
-//        parse: function(id) {
-//          return [buildCriteria(id)];
-//        }
-//      },
-//      response: {
-//        parse: function(recordset) {
-//          return recordset[0];
-//        },
-//        type: 'object',
-//        schema: entity.getSchema()
-//      }
-//    },
-//    [`delete :${id}`]: {
-//      parameters: {
-//        parse: function(id) {
-//          return [buildCriteria(id)];
-//        }
-//      },
-//      response: {
-//        parse: function(recordset) {
-//          return recordset[0];
-//        },
-//        type: 'none'
-//      }
-//    }
-//  };
-//
-//}
-//
-//function buildCriteria(params) {
-//  let key = Object.keys(params)[0];
-//  let criteria = {where: {}};
-//  criteria.where[key] = params[key];
-//  return criteria;
-//}
+function entityMethods(entity, id) {
+
+  function buildCriteria(key) {
+    let criteria = {where: {}};
+    criteria.where[id] = key;
+    return criteria;
+  }
+
+  return {
+
+    get: {
+      operationId: 'fetch',
+      parameters: {
+        parse: function(query) {
+          var criteria;
+          if (query.criteria) {
+            criteria = JSON.parse(query.criteria);
+          } else {
+            criteria = {
+              where: query
+            };
+          }
+          return [criteria];
+        }
+      },
+      response: {
+        type: 'array',
+        schema: entity.getSchema()
+      }
+    },
+    post: {
+      operationId: 'create',
+      response: {
+        status: 201
+      }
+    },
+    [`put :${id}`]: {
+      operationId: 'update',
+      parameters: {
+        parse: function(id, body) {
+          return [body, buildCriteria(id)];
+        }
+      },
+      response: {
+        type: 'array',
+        definition: 'person'
+      }
+    },
+    [`get :${id}`]: {
+      operationId: 'fetch',
+      parameters: {
+        parse: function(id) {
+          return [buildCriteria(id)];
+        }
+      },
+      response: {
+        parse: function(recordset) {
+          return recordset.length ? recordset[0] : void 0;
+        },
+        type: 'object',
+        definition: 'person'
+      }
+    },
+    [`delete :${id}`]: {
+      operationId: 'destroy',
+      parameters: {
+        parse: function(id) {
+          return [buildCriteria(id)];
+        }
+      },
+      response: {
+        status: 204,
+        parse: function(recordset) {
+          return recordset[0];
+        }
+      }
+    }
+  };
+
+}
+
+

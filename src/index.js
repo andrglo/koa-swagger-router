@@ -1,9 +1,9 @@
 'use strict';
 
-var Resource = require('koa-resource-router');
-var compose = require('koa-compose');
 var parse = require('co-body');
+var assert = require('assert');
 var yaml = require('js-yaml');
+var router = require('koa-router')();
 var fs = require('fs');
 var path = require('path');
 
@@ -12,26 +12,60 @@ var log = console.log;
 module.exports = function(spec) {
 
   let resources = [];
-  let specs = [load(spec)];
+  spec = load(spec || './spec.yaml');
 
   return {
-    resource: function(name, collection, options) {
-      options = options || {};
-      specs.push(yaml.load(fs.readFileSync(path.join(__dirname, 'resource.yaml'))
-        .toString()
-        .replace(/\$model/g, name.toLowerCase())));
-      resources.push(new Resource(name, actions(collection), {
-        id: options.id || 'id'
-      }));
+
+    add: function(prefix, api, methods, definitions) {
+
+      // todo build swagger
+
+      let keys = Object.keys(methods);
+      keys.forEach(function(key) {
+        let action = methods[key];
+        let keyInfo = match(key, /(^\w*) ?(.*)/);
+        let method = keyInfo[0].toLowerCase();
+        let path = `/${prefix}`;
+        if (keyInfo[1]) {
+          path += `/${keyInfo[1]}`;
+        }
+        let params = match(path, /\:(\w*)/g);
+        router[method](path, function*() {
+
+          let args = [];
+          params.forEach(function(param) {
+            args.push(this.params[param]);
+          }, this);
+          if (method === 'get') {
+            args.push(this.query);
+          } else {
+            let body = yield parse(this);
+            args.push(body);
+          }
+          if (action.parameters && action.parameters.parse) {
+            args = action.parameters.parse.apply(this, args);
+          }
+          assert(action.operationId, 'Operation not informed');
+          assert(api[action.operationId], 'Operation ' + action.operationId + ' not defined');
+          //todo check if it is a generator or a promise
+          let promise = api[action.operationId].apply(api, args);
+          let result = yield promise;
+          if (action.response && action.response.parse) {
+            result = action.response.parse.call(this, result);
+          }
+          if (result === void 0) {
+            this.status = 404;
+          } else {
+            this.body = result;
+            if (action.response && action.response.status) {
+              this.status = action.response.status;
+            }
+          }
+        });
+      });
     },
-    use: function(api, apiSpec) {
-      specs.push(load(apiSpec));
-      //todo
-    },
-    middleware: function() {
-      return compose(resources.map(function(resource) {
-        return resource.middleware();
-      }));
+    routes: function() {
+      return router.routes();
     }
   };
 };
@@ -50,54 +84,17 @@ function load(spec) {
   return spec;
 }
 
-function actions(collection) {
-
-  return {
-
-    index: function*() {
-      var criteria;
-      if (this.query.criteria) {
-        criteria = JSON.parse(this.query.criteria);
-      } else {
-        criteria = {
-          where: this.query
-        };
-      }
-      this.body = yield collection.query(criteria);
-    },
-
-    create: function*() {
-      var body = yield parse(this);
-      this.body = yield collection.create(body);
-      this.status = 201;
-    },
-
-    update: function*() {
-      var body = yield parse(this);
-      this.body = yield collection.update(body, buildCriteria(this.params));
-      if (!this.body) {
-        this.throw(404);
-      }
-    },
-
-    show: function*() {
-      let recordset = yield collection.fetch(buildCriteria(this.params));
-      if (!recordset.length) {
-        this.throw(404);
-      }
-      this.body = recordset[0];
-    },
-
-    destroy: function*() {
-      yield collection.destroy(buildCriteria(this.params));
-      this.status = 204;
+function match(str, re) {
+  if (!re.global) {
+    return str.match(re).slice(1);
+  }
+  var res = [];
+  var m;
+  while ((m = re.exec(str)) !== null) {
+    if (m.index === re.lastIndex) {
+      re.lastIndex++;
     }
-  };
-}
-
-function buildCriteria(params) {
-  let key = Object.keys(params)[0];
-  let criteria = {where: {}};
-  criteria.where[key] = params[key];
-  return criteria;
+    res.push(m[1]);
+  }
+  return res;
 }
