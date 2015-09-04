@@ -28,6 +28,9 @@ module.exports = function(options) {
     var app = koa();
     var router = routerFactory(__dirname + '/spec.yaml');
     router.resource('person', options.entity, {id: 'name'});
+    //router.resource('person', options.entity, entityActions('name'), {
+    //  person: options.entity.getSchema()
+    //});
     app.use(router.middleware());
     agent = request(http.createServer(app.callback()));
   });
@@ -80,3 +83,76 @@ module.exports = function(options) {
   });
 
 };
+
+//function entityActions(entity, id) {
+//
+//  return {
+//
+//    get: {
+//      parameters: {
+//        parse: function(query) {
+//          var criteria;
+//          if (query.criteria) {
+//            criteria = JSON.parse(query.criteria);
+//          } else {
+//            criteria = {
+//              where: query
+//            };
+//          }
+//          return [criteria];
+//        }
+//      },
+//      response: {
+//        type: 'array',
+//        schema: entity.getSchema()
+//      }
+//    },
+//    post: {},
+//    [`put :${id}`]: {
+//      parameters: {
+//        parse: function(id, body) {
+//          return [body, buildCriteria(id)];
+//        }
+//      },
+//      response: {
+//        type: 'array',
+//        schema: entity.getSchema()
+//      }
+//    },
+//    [`get :${id}`]: {
+//      parameters: {
+//        parse: function(id) {
+//          return [buildCriteria(id)];
+//        }
+//      },
+//      response: {
+//        parse: function(recordset) {
+//          return recordset[0];
+//        },
+//        type: 'object',
+//        schema: entity.getSchema()
+//      }
+//    },
+//    [`delete :${id}`]: {
+//      parameters: {
+//        parse: function(id) {
+//          return [buildCriteria(id)];
+//        }
+//      },
+//      response: {
+//        parse: function(recordset) {
+//          return recordset[0];
+//        },
+//        type: 'none'
+//      }
+//    }
+//  };
+//
+//}
+//
+//function buildCriteria(params) {
+//  let key = Object.keys(params)[0];
+//  let criteria = {where: {}};
+//  criteria.where[key] = params[key];
+//  return criteria;
+//}
