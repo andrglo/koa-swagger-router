@@ -6,19 +6,36 @@ var yaml = require('js-yaml');
 var router = require('koa-router')();
 var fs = require('fs');
 var path = require('path');
+var findUp = require('findup-sync');
+var titleCase = require('title-case');
+
+var pack = require(findUp('package.json', {
+  cwd: path.dirname(module.parent.filename)
+}));
 
 var log = console.log;
 
 module.exports = function(spec) {
 
   let resources = [];
-  spec = load(spec || './spec.yaml');
+  spec = load(spec || path.join(__dirname, 'spec.yaml'));
+  spec.info.description = spec.info.description || pack.description;
+  spec.info.version = spec.info.version || pack.version;
+  spec.info.title = spec.info.title || titleCase(pack.name);
+  spec.info.contact.name = spec.info.contact.name ||
+    (pack.author && pack.author.name);
+  spec.info.license.name = spec.info.license.name ||
+    (pack.private === true ? 'private' : pack.license);
+  spec.paths = spec.paths || {};
+  spec.definitions = spec.definitions || {};
 
   return {
 
     add: function(prefix, api, methods, definitions) {
 
-      // todo build swagger
+      Object.keys(definitions || {}).forEach(function(key) {
+        spec.definitions[key] = definitions[key];
+      });
 
       let keys = Object.keys(methods);
       keys.forEach(function(key) {
@@ -29,29 +46,61 @@ module.exports = function(spec) {
         if (keyInfo[1]) {
           path += `/${keyInfo[1]}`;
         }
-        let params = match(path, /\:(\w*)/g);
+        let pathParams = match(path, /\:(\w*)/g);
+
+        let specPath = path.replace(/\:(\w*)/g, function(match, name) {
+          return `{${name}}`;
+        });
+        assert(action.operation, 'Operation not informed');
+        assert(action.operation.name, 'Operation name not informed');
+        assert(action.operation.params, 'Operation params not informed');
+        spec.paths[specPath] = spec.paths[specPath] || {};
+        let specMethod = spec.paths[specPath][method] = {
+          tags: [prefix],
+          summary: action.summary || titleCase(`${method} ${prefix}`),
+          description: action.description,
+          operationId: action.operation.name,
+          consumes: [],
+          produces: [],
+          responses: []
+        };
+        specMethod.tags = specMethod.tags.concat(toArray(action.tags));
+        specMethod.parameters = action.operation.params.map(function(param) {
+          return createSpecParam('path', param, {
+              knownNames: pathParams,
+              required: true
+            }) ||
+            createSpecParam('body', param) ||
+            createSpecParam('query', param, {knownNames: [param.name]}); // default, always last
+        });
+
         router[method](path, function*() {
 
           let args = [];
-          params.forEach(function(param) {
-            args.push(this.params[param]);
-          }, this);
-          if (method === 'get') {
-            args.push(this.query);
-          } else {
-            let body = yield parse(this);
-            args.push(body);
+          for (var i = 0; i < specMethod.parameters.length; i++) {
+            var param = specMethod.parameters[i];
+            if (param.in === 'path') {
+              args.push(this.params[param.name]);
+            } else if (param.in === 'body') {
+              let body = yield parse(this);
+              if (param.name === 'body') {
+                args.push(body);
+              } else {
+                args.push(body[param.name]);
+              }
+            } else if (param.in === 'query') {
+              args.push(this.query[param.name]);
+            }
           }
-          if (action.parameters && action.parameters.parse) {
-            args = action.parameters.parse.apply(this, args);
+
+          if (action.operation.doBefore) {
+            args = action.operation.doBefore.apply(this, args);
           }
-          assert(action.operationId, 'Operation not informed');
-          assert(api[action.operationId], 'Operation ' + action.operationId + ' not defined');
           //todo check if it is a generator or a promise
-          let promise = api[action.operationId].apply(api, args);
+          let promise = api[action.operation.name].apply(api, args);
           let result = yield promise;
-          if (action.response && action.response.parse) {
-            result = action.response.parse.call(this, result);
+          if (action.operation.doAfter) {
+            result = action.operation.doAfter.call(this, result);
           }
           if (result === void 0) {
             this.status = 404;
@@ -63,6 +112,7 @@ module.exports = function(spec) {
           }
         });
       });
+      log('spec', JSON.stringify(spec, null, ' '))
     },
     routes: function() {
       return router.routes();
@@ -97,4 +147,34 @@ function match(str, re) {
     res.push(m[1]);
   }
   return res;
+}
+
+function toArray(any) {
+  return any ? (Array.isArray(any) ? any : [any]) : [];
+}
+
+function createSpecParam(searchIn, param, options) {
+  options = options || {};
+  let knownNames = options.knownNames || [];
+  var prefix = `${searchIn}.`;
+  if (param.name === searchIn ||
+    param.name.startsWith(prefix) ||
+    knownNames.indexOf(param.name) !== -1) {
+    let specParam = {};
+    specParam.in = searchIn;
+    specParam.name = param.name.replace(prefix, '');
+    specParam.description = param.description;
+    specParam.required = param.required === true || options.required === true;
+    if (param.schema) {
+      specParam.schema = {
+        $ref: `#/definitions/${param.schema}`
+      };
+    } else if (param.name === searchIn) {
+      specParam.type = param.type || 'object';
+    } else {
+      specParam.type = param.type || 'string';
+    }
+    specParam.format = param.format;
+    return specParam;
+  }
 }

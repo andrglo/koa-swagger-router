@@ -26,10 +26,10 @@ module.exports = function(options) {
   var agent;
   before(function() {
     var app = koa();
-    var router = routerFactory(__dirname + '/spec.yaml');
+    var router = routerFactory();
     router.add('person',
       options.entity,
-      entityMethods(options.entity, 'name'), {
+      entityMethods(options.entity, 'name', 'person'), {
         person: options.entity.getSchema()
       });
     app.use(router.routes());
@@ -85,81 +85,153 @@ module.exports = function(options) {
 
 };
 
-function entityMethods(entity, id) {
+function entityMethods(entity, id, schemaName) {
 
-  function buildCriteria(key) {
+  function buildCriteria(key, updatedAt) {
     let criteria = {where: {}};
     criteria.where[id] = key;
+    if (updatedAt !== void 0) {
+      criteria.where.updatedAt = updatedAt;
+    }
     return criteria;
   }
+
+  let schema = entity.getSchema();
+  let queryColumns = Object.keys(schema.properties).map(function(key) {
+    let column = schema.properties[key];
+    if (column.type !== 'object') {
+      return {
+        name: key,
+        description: column.description,
+        type: column.type
+      };
+    }
+  });
 
   return {
 
     get: {
-      operationId: 'fetch',
-      parameters: {
-        parse: function(query) {
-          var criteria;
-          if (query.criteria) {
-            criteria = JSON.parse(query.criteria);
+      operation: {
+        name: 'fetch',
+        params: [
+          {
+            name: 'criteria',
+            description: 'Filter, order and or pagination to apply',
+            type: 'string'
+          }
+        ].concat(queryColumns),
+        doBefore: function(criteria) {
+          if (criteria) {
+            criteria = JSON.parse(criteria);
+            criteria.where = criteria.where || {};
           } else {
             criteria = {
-              where: query
+              where: {}
             };
           }
+          let i = 1;
+          queryColumns.forEach(function(column) {
+            let value = arguments[i++];
+            if (value) {
+              criteria.where[column] = value;
+            }
+          });
           return [criteria];
         }
       },
       response: {
         type: 'array',
-        schema: entity.getSchema()
-      }
+        schema: schemaName
+      },
+      security: [{apiKey: []}]
     },
     post: {
-      operationId: 'create',
+      operation: {
+        name: 'create',
+        params: [
+          {
+            name: 'body',
+            description: `${schemaName} to be added`,
+            required: true,
+            schema: schemaName
+          }
+        ]
+      },
       response: {
-        status: 201
+        status: 201,
+        schema: schemaName
+      },
+      security: [{apiKey: []}]
+    },
+    [`get :${id}`]: {
+      operation: {
+        name: 'fetch',
+        params: [
+          {
+            name: `path.${id}`,
+            description: 'Object id'
+          }
+        ],
+        doBefore: function(id) {
+          return [buildCriteria(id)];
+        },
+        doAfter: function(recordset) {
+          return recordset.length ? recordset[0] : void 0;
+        }
+      },
+      response: {
+        type: 'object',
+        schema: schemaName
       }
     },
     [`put :${id}`]: {
-      operationId: 'update',
-      parameters: {
-        parse: function(id, body) {
-          return [body, buildCriteria(id)];
+      operation: {
+        name: 'update',
+        params: [
+          {
+            name: `${id}`,
+            description: 'Object id'
+          },
+          {
+            name: 'body',
+            description: `${schemaName} to be updated`,
+            required: true,
+            schema: schemaName
+          }
+        ],
+        doBefore: function(id, body) {
+          return [body, buildCriteria(id, body.updatedAt)];
         }
       },
       response: {
         type: 'array',
-        definition: 'person'
-      }
-    },
-    [`get :${id}`]: {
-      operationId: 'fetch',
-      parameters: {
-        parse: function(id) {
-          return [buildCriteria(id)];
-        }
-      },
-      response: {
-        parse: function(recordset) {
-          return recordset.length ? recordset[0] : void 0;
-        },
-        type: 'object',
-        definition: 'person'
+        schema: schemaName
       }
     },
     [`delete :${id}`]: {
-      operationId: 'destroy',
-      parameters: {
-        parse: function(id) {
-          return [buildCriteria(id)];
+      operation: {
+        name: 'destroy',
+        params: [
+          {
+            name: `path.${id}`,
+            description: 'Object id'
+          },
+          {
+            name: 'body.updatedAt',
+            description: 'Last update timestamp',
+            required: true,
+            format: 'datetime'
+          }
+        ],
+        doBefore: function(id, updatedAt) {
+          return [buildCriteria(id, updatedAt)];
+        },
+        doAfter: function(recordset) {
+          return recordset[0];
         }
       },
       response: {
-        status: 204,
-        parse: function(recordset) {
-          return recordset[0];
-        }
+        status: 204
       }
     }
   };

@@ -1,12 +1,7 @@
 swagger: "2.0"
 info:
-  description: Habilis api server
-  version: "0.0.1"
-  title: Habilis
-  contact:
-    name: andredagloria@gmail.com
-  license:
-    name: Proprietary
+  contact: {}
+  license: {}
 produces:
    - application/json
    - text/plain; charset=utf-8
