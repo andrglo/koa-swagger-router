@@ -30,7 +30,8 @@
     "json-schema-entity": "^0.3.1",
     "koa": "^1.0.0",
     "pg-cr-layer": "0.0.4",
-    "supertest": "^1.1.0"
+    "supertest": "^1.1.0",
+    "swagger-parser": "^2.5.0"
   },
   "scripts": {
     "prepublish": "gulp prepublish",

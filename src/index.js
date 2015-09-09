@@ -13,32 +13,46 @@ var pack = require(findUp('package.json', {
   cwd: path.dirname(module.parent.filename)
 }));
 
+var defaultSpec = {
+  swagger: '2.0',
+  info: {
+    title: titleCase(pack.name),
+    description: pack.description,
+    version: pack.version,
+    contact: {
+      name: pack.author && pack.author.name
+    },
+    license: {
+      name: pack.private === true ? 'Proprietary' : pack.license
+    }
+  },
+  basePath: '/',
+  host: 'localhost'
+};
+
 var log = console.log;
 
 module.exports = function(spec) {
 
-  let resources = [];
-  spec = load(spec || path.join(__dirname, 'spec.yaml'));
-  spec.info.description = spec.info.description || pack.description;
-  spec.info.version = spec.info.version || pack.version;
-  spec.info.title = spec.info.title || titleCase(pack.name);
-  spec.info.contact.name = spec.info.contact.name ||
-    (pack.author && pack.author.name);
-  spec.info.license.name = spec.info.license.name ||
-    (pack.private === true ? 'private' : pack.license);
+  spec = Object.assign({}, defaultSpec, load(spec || {}));
   spec.paths = spec.paths || {};
   spec.definitions = spec.definitions || {};
 
   return {
 
-    add: function(prefix, api, methods, definitions) {
+    add: function(prefix, api, methods, schemas) {
 
-      Object.keys(definitions || {}).forEach(function(key) {
-        spec.definitions[key] = definitions[key];
+      Object.keys(schemas || {}).forEach(function(key) {
+        if (spec.definitions[key]) {
+          throw new Error('Schema "' + key + '"already exists');
+        }
+        spec.definitions[key] = toJsonSchema(schemas[key]);
       });
 
+      let ii = 0;
       let keys = Object.keys(methods);
       keys.forEach(function(key) {
+        ii++;
         let action = methods[key];
         let keyInfo = match(key, /(^\w*) ?(.*)/);
         let method = keyInfo[0].toLowerCase();
@@ -58,11 +72,8 @@ module.exports = function(spec) {
         let specMethod = spec.paths[specPath][method] = {
           tags: [prefix],
           summary: action.summary || titleCase(`${method} ${prefix}`),
-          description: action.description,
-          operationId: action.operation.name,
-          consumes: [],
-          produces: [],
-          responses: []
+          description: action.description || '',
+          responses: {}
         };
         specMethod.tags = specMethod.tags.concat(toArray(action.tags));
         specMethod.parameters = action.operation.params.map(function(param) {
@@ -73,6 +84,13 @@ module.exports = function(spec) {
             createSpecParam('body', param) ||
             createSpecParam('query', param, {knownNames: [param.name]}); // default, always last
         });
+        let response = (action.response && action.response.status) || 200;
+        specMethod.responses[response] = {
+          description: 'Success'
+        };
+        specMethod.consumes = action.consumes;
+        specMethod.produces = action.produces;
+        specMethod.security = action.security;
 
         router[method](path, function*() {
 
@@ -112,10 +130,12 @@ module.exports = function(spec) {
           }
         });
       });
-      log('spec', JSON.stringify(spec, null, ' '))
     },
     routes: function() {
       return router.routes();
+    },
+    spec: function() {
+      return spec;
     }
   };
 };
@@ -166,9 +186,9 @@ function createSpecParam(searchIn, param, options) {
     specParam.description = param.description;
     specParam.required = param.required === true || options.required === true;
     if (param.schema) {
-      specParam.schema = {
+      specParam.schema = typeof param.schema === 'string' ? {
         $ref: `#/definitions/${param.schema}`
-      };
+      } : param.schema;
     } else if (param.name === searchIn) {
       specParam.type = param.type || 'object';
     } else {
@@ -177,4 +197,87 @@ function createSpecParam(searchIn, param, options) {
     specParam.format = param.format;
     return specParam;
   }
+}
+
+function toJsonSchema(schema, level) {
+  level = level || 0;
+  let definition = {};
+  Object.keys(schema).forEach(function(key) {
+    var value = schema[key];
+    if (level == 0) {
+      if ([
+          'properties', 'title', 'description', 'type'
+        ].indexOf(key) === -1) {
+        key = 'x-' + key;
+      }
+    } else {
+      if ([
+          'properties', 'title', 'description', 'type', 'schema', 'items'
+        ].indexOf(key) === -1) {
+        key = 'x-' + key;
+      }
+    }
+    switch (typeof value) {
+      case 'function':
+        break;
+      case 'array':
+        definition[key] = value.slice(0);
+        break;
+      case 'object':
+        definition[key] = Object.assign({}, value);
+        break;
+      default:
+        definition[key] = value;
+    }
+  });
+  var required = [];
+  Object.keys(definition.properties).forEach(function(key) {
+    let source = definition.properties[key];
+    if (source.required === true) {
+      required.push(key);
+    }
+    let property = {};
+    Object.keys(source).forEach(function(key) {
+      if (key === 'required') {
+        return;
+      }
+      var value = source[key];
+      if ([
+          'title', 'description', 'type', 'schema', 'properties',
+          '$ref', 'maxLength', 'format', 'enum', 'items'
+        ].indexOf(key) === -1) {
+        key = 'x-' + key;
+      }
+      property[key] = value;
+    });
+    if (property.enum && property.maxLength) {
+      delete property.maxLength;
+    }
+    if (property.type === 'object') {
+      definition.properties[key] = toJsonSchema(property, level + 1);
+    } else {
+      if (property.type === 'array' && typeof property.items === 'object') {
+        if (property.items.type === 'object') {
+          property.items = toJsonSchema(property.items, level + 1);
+        } else {
+          property.items = {};
+          Object.keys(source.items).forEach(function(key) {
+            var value = source.items[key];
+            if ([
+                'type'
+              ].indexOf(key) === -1) {
+              key = 'x-' + key;
+            }
+            property.items[key] = value;
+          });
+        }
+      }
+      definition.properties[key] = property;
+    }
+  });
+  if (required.length) {
+    definition.required = required;
+  }
+  return definition;
+
 }

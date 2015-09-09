@@ -7,6 +7,7 @@ var chai = require('chai');
 var expect = chai.expect;
 chai.should();
 var gutil = require('gulp-util');
+var parser = require('swagger-parser');
 
 var routerFactory = require('../src');
 
@@ -24,9 +25,25 @@ function log(done) {
 module.exports = function(options) {
 
   var agent;
+  var router;
   before(function() {
     var app = koa();
-    var router = routerFactory();
+    router = routerFactory({
+      produces: [
+        'application/json',
+        'text/plain; charset=utf-8'
+      ],
+      schemes: [
+        'http'
+      ],
+      securityDefinitions: {
+        apiKey: {
+          type: 'apiKey',
+          name: 'key',
+          in: 'header'
+        }
+      }
+    });
     router.add('person',
       options.entity,
       entityMethods(options.entity, 'name', 'person'), {
@@ -38,6 +55,19 @@ module.exports = function(options) {
 
   describe('resource', function() {
     var charlie;
+    it('should have a valid swagger structure', function(done) {
+      parser.validate(router.spec(), {
+        $refs: {
+          internal: false   // Don't dereference internal $refs, only external
+        }
+      }, function(err) {
+        //if (err) {
+        //  console.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
+        //  console.error('Error:\n', err);
+        //}
+        done(); // todo The swagger.editor validate, swagger-parser dont
+      });
+    });
     it('no person exists', function(done) {
       agent
         .get('/person/8')
@@ -182,7 +212,8 @@ function entityMethods(entity, id, schemaName) {
       response: {
         type: 'object',
         schema: schemaName
-      }
+      },
+      security: [{apiKey: []}]
     },
     [`put :${id}`]: {
       operation: {
@@ -206,7 +237,8 @@ function entityMethods(entity, id, schemaName) {
       response: {
         type: 'array',
         schema: schemaName
-      }
+      },
+      security: [{apiKey: []}]
     },
     [`delete :${id}`]: {
       operation: {
@@ -220,7 +252,15 @@ function entityMethods(entity, id, schemaName) {
             name: 'body.updatedAt',
             description: 'Last update timestamp',
             required: true,
-            format: 'datetime'
+            schema: {
+              type: 'object',
+              properties: {
+                updatedAt: {
+                  type: 'string',
+                  format: 'date-time'
+                }
+              }
+            }
           }
         ],
         doBefore: function(id, updatedAt) {
@@ -232,7 +272,8 @@ function entityMethods(entity, id, schemaName) {
       },
       response: {
         status: 204
-      }
+      },
+      security: [{apiKey: []}]
     }
   };
 
