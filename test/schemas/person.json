@@ -13,7 +13,18 @@
     },
     "code": {
       "type": "string",
+      "enum": [
+        "one", "two"
+      ],
       "maxLength": 6
+    },
+    "fkChildren": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "fkParent": {
+      "type": "string",
+      "maxLength": 60
     }
   }
 }

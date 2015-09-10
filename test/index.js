@@ -23,7 +23,7 @@ var databaseName = 'test-koa-swagger-router';
 function createPostgresDb() {
   var dbName = process.env.POSTGRES_DATABASE || databaseName;
   return pg.execute(
-    'DROP DATABASE IF EXISTS "' + dbName + '";')
+      'DROP DATABASE IF EXISTS "' + dbName + '";')
     .then(function() {
       return pg.execute('CREATE DATABASE "' + dbName + '"');
     });
@@ -49,6 +49,12 @@ before(function(done) {
         .then(function() {
           pgOptions.entity = jse('person', personSchema, {db: pgOptions.db});
           pgOptions.entity.useTimestamps();
+          pgOptions.entity
+            .hasMany('person as children', personSchema, {db: pgOptions.db})
+            .foreignKey('fkChildren');
+          pgOptions.entity
+            .hasOne('person as parent', personSchema, {db: pgOptions.db})
+            .foreignKey('fkParent');
           return pgOptions.entity.createTables();
         });
     })

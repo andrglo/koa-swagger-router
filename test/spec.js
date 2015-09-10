@@ -47,7 +47,20 @@ module.exports = function(options) {
     router.add('person',
       options.entity,
       entityMethods(options.entity, 'name', 'person'), {
-        person: options.entity.getSchema()
+        person: options.entity.getSchema(),
+        other: {
+          myProperty: 'invalid swagger',
+          properties: {
+            name: {
+              type: 'array',
+              items: {
+                type: 'string',
+                description: 'none'
+              }
+            }
+            //todo add a proerty object
+          }
+        }
       });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
@@ -61,11 +74,11 @@ module.exports = function(options) {
           internal: false   // Don't dereference internal $refs, only external
         }
       }, function(err) {
-        //if (err) {
-        //  console.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
-        //  console.error('Error:\n', err);
-        //}
-        done(); // todo The swagger.editor validate, swagger-parser dont
+        if (err) {
+          console.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
+          console.error('Error:\n', err);
+        }
+        done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
       });
     });
     it('no person exists', function(done) {
@@ -127,14 +140,15 @@ function entityMethods(entity, id, schemaName) {
   }
 
   let schema = entity.getSchema();
-  let queryColumns = Object.keys(schema.properties).map(function(key) {
+  let queryColumns = [];
+  Object.keys(schema.properties).map(function(key) {
     let column = schema.properties[key];
-    if (column.type !== 'object') {
-      return {
+    if (column.type !== 'object' && column.type !== 'array') {
+      queryColumns.push({
         name: key,
         description: column.description,
         type: column.type
-      };
+      });
     }
   });
 

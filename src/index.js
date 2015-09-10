@@ -204,7 +204,7 @@ function toJsonSchema(schema, level) {
   let definition = {};
   Object.keys(schema).forEach(function(key) {
     var value = schema[key];
-    if (level == 0) {
+    if (level === 0) {
       if ([
           'properties', 'title', 'description', 'type'
         ].indexOf(key) === -1) {
@@ -218,11 +218,6 @@ function toJsonSchema(schema, level) {
       }
     }
     switch (typeof value) {
-      case 'function':
-        break;
-      case 'array':
-        definition[key] = value.slice(0);
-        break;
       case 'object':
         definition[key] = Object.assign({}, value);
         break;
