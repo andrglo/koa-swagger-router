@@ -57,8 +57,16 @@ module.exports = function(options) {
                 type: 'string',
                 description: 'none'
               }
+            },
+            otherProperty: {
+              type: 'object',
+              format: 'none',
+              properties: {
+                name: {
+                  type: 'string'
+                }
+              }
             }
-            //todo add a proerty object
           }
         }
       });
@@ -75,8 +83,8 @@ module.exports = function(options) {
         }
       }, function(err) {
         if (err) {
-          console.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
-          console.error('Error:\n', err);
+          gutil.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
+          gutil.log('Error:\n', gutil.colors.red(err));
         }
         done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
       });
@@ -119,6 +127,19 @@ module.exports = function(options) {
         .expect(200)
         .expect(function(res) {
           let record = charlie = res.body;
+          record.should.have.property('address');
+          record.should.not.have.property('code');
+        })
+        .end(log(done));
+    });
+    it('read charlie', function(done) {
+      agent
+        .get('/person?name=Charlie')
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /text/)
+        .expect(200)
+        .expect(function(res) {
+          let record = res.body;
           record.should.have.property('address');
           record.should.not.have.property('code');
         })
@@ -283,6 +304,32 @@ function entityMethods(entity, id, schemaName) {
         doAfter: function(recordset) {
           return recordset[0];
         }
+      },
+      response: {
+        status: 204
+      },
+      security: [{apiKey: []}]
+    },
+    [`delete :${id}/:none/:abc`]: {
+      operation: {
+        name: 'destroy',
+        params: [
+          {
+            name: `path.${id}`,
+            description: 'Object id'
+          },
+          {
+            name: 'path.none',
+            description: 'Object name'
+          },
+          {
+            name: 'path.abc',
+            description: 'Object abc'
+          },
+          {
+            name: 'body'
+          }
+        ]
       },
       response: {
         status: 204

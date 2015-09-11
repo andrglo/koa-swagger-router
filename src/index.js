@@ -2,7 +2,6 @@
 
 var parse = require('co-body');
 var assert = require('assert');
-var yaml = require('js-yaml');
 var router = require('koa-router')();
 var fs = require('fs');
 var path = require('path');
@@ -34,7 +33,7 @@ var log = console.log;
 
 module.exports = function(spec) {
 
-  spec = Object.assign({}, defaultSpec, load(spec || {}));
+  spec = Object.assign({}, defaultSpec, spec);
   spec.paths = spec.paths || {};
   spec.definitions = spec.definitions || {};
 
@@ -115,6 +114,7 @@ module.exports = function(spec) {
             args = action.operation.doBefore.apply(this, args);
           }
           //todo check if it is a generator or a promise
+          console.log('args', args)
           let promise = api[action.operation.name].apply(api, args);
           let result = yield promise;
           if (action.operation.doAfter) {
@@ -140,20 +140,6 @@ module.exports = function(spec) {
   };
 };
 
-function load(spec) {
-  if (typeof spec === 'string') {
-    let extname = path.extname(spec);
-    if (extname === '.yaml' || extname === '.yml') {
-      return yaml.load(fs.readFileSync(spec));
-    } else if (extname === '.json' || extname === '.js') {
-      return require(spec);
-    } else {
-      throw new Error('File "' + spec + '" is invalid');
-    }
-  }
-  return spec;
-}
-
 function match(str, re) {
   if (!re.global) {
     return str.match(re).slice(1);
@@ -161,9 +147,9 @@ function match(str, re) {
   var res = [];
   var m;
   while ((m = re.exec(str)) !== null) {
-    if (m.index === re.lastIndex) {
-      re.lastIndex++;
-    }
+    //if (m.index === re.lastIndex) {
+    //  re.lastIndex++;
+    //}
     res.push(m[1]);
   }
   return res;
@@ -218,6 +204,11 @@ function toJsonSchema(schema, level) {
       }
     }
     switch (typeof value) {
+      //case 'function':
+      //  break;
+      //case 'array':
+      //  definition[key] = value.slice(0);
+      //  break;
       case 'object':
         definition[key] = Object.assign({}, value);
         break;

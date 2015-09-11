@@ -31,7 +31,7 @@
     "koa": "^1.0.0",
     "pg-cr-layer": "0.0.4",
     "supertest": "^1.1.0",
-    "swagger-parser": "^2.5.0"
+    "swagger-parser": "^3.0.0-alpha.8"
   },
   "scripts": {
     "prepublish": "gulp prepublish",
@@ -41,7 +41,6 @@
   "dependencies": {
     "co-body": "^4.0.0",
     "findup-sync": "^0.2.1",
-    "js-yaml": "^3.4.0",
     "koa-router": "^5.1.2",
     "title-case": "^1.1.1"
   }
