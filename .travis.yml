@@ -1,6 +1,5 @@
 language: node_js
 node_js:
-  - '0.12'
-  - 'iojs-v3.3.0'
+  - '4.0'
 addons:
   postgresql: '9.4'

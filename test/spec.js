@@ -11,7 +11,7 @@ var parser = require('swagger-parser');
 
 var routerFactory = require('../src');
 
-function log(done) {
+function logError(done) {
   return function(error, res) {
     if (error) {
       res = res.res;
@@ -21,6 +21,15 @@ function log(done) {
     done(error);
   };
 }
+
+var log = function(name, obj) {
+  console.log(name);
+  console.dir(obj, {
+    showHidden: true,
+    depth: null,
+    colors: true
+  });
+};
 
 module.exports = function(options) {
 
@@ -83,7 +92,7 @@ module.exports = function(options) {
         }
       }, function(err) {
         if (err) {
-          gutil.log('Swagger specification:\n', JSON.stringify(router.spec(), null, ' '));
+          gutil.log('Swagger specification:\n', JSON.stringify(router.spec(), null, '  '));
           gutil.log('Error:\n', gutil.colors.red(err));
         }
         done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
@@ -95,7 +104,7 @@ module.exports = function(options) {
         .set('Accept', 'application/json')
         .expect('Content-Type', /text/)
         .expect(404)
-        .end(log(done));
+        .end(logError(done));
     });
     it('should create a new person', function(done) {
       let now = (new Date()).toISOString();
@@ -116,7 +125,7 @@ module.exports = function(options) {
           expect(record.createdAt).to.be.a('string');
           expect(record.createdAt).to.above(now);
         })
-        .end(log(done));
+        .end(logError(done));
     });
     it('should update address', function(done) {
       charlie.address = 'Victoria St';
@@ -130,20 +139,23 @@ module.exports = function(options) {
           record.should.have.property('address');
           record.should.not.have.property('code');
         })
-        .end(log(done));
+        .end(logError(done));
     });
     it('read charlie', function(done) {
       agent
         .get('/person?name=Charlie')
         .set('Accept', 'application/json')
-        .expect('Content-Type', /text/)
+        .expect('Content-Type', /json/)
         .expect(200)
         .expect(function(res) {
-          let record = res.body;
+          let recordset = res.body;
+          expect(recordset).to.be.a('array');
+          expect(recordset.length).to.equal(1);
+          let record = recordset[0];
           record.should.have.property('address');
           record.should.not.have.property('code');
         })
-        .end(log(done));
+        .end(logError(done));
     });
   });
 
@@ -185,7 +197,8 @@ function entityMethods(entity, id, schemaName) {
             type: 'string'
           }
         ].concat(queryColumns),
-        doBefore: function(criteria) {
+        doBefore: function(query) {
+          let criteria = query.criteria;
           if (criteria) {
             criteria = JSON.parse(criteria);
             criteria.where = criteria.where || {};
@@ -194,11 +207,10 @@ function entityMethods(entity, id, schemaName) {
               where: {}
             };
           }
-          let i = 1;
           queryColumns.forEach(function(column) {
-            let value = arguments[i++];
+            let value = query[column.name];
             if (value) {
-              criteria.where[column] = value;
+              criteria.where[column.name] = value;
             }
           });
           return [criteria];

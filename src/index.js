@@ -29,7 +29,14 @@ var defaultSpec = {
   host: 'localhost'
 };
 
-var log = console.log;
+var log = function(name, obj) {
+  console.log(name);
+  console.dir(obj, {
+    showHidden: true,
+    depth: null,
+    colors: true
+  });
+};
 
 module.exports = function(spec) {
 
@@ -48,10 +55,8 @@ module.exports = function(spec) {
         spec.definitions[key] = toJsonSchema(schemas[key]);
       });
 
-      let ii = 0;
       let keys = Object.keys(methods);
       keys.forEach(function(key) {
-        ii++;
         let action = methods[key];
         let keyInfo = match(key, /(^\w*) ?(.*)/);
         let method = keyInfo[0].toLowerCase();
@@ -76,14 +81,11 @@ module.exports = function(spec) {
         };
         specMethod.tags = specMethod.tags.concat(toArray(action.tags));
         specMethod.parameters = action.operation.params.map(function(param) {
-          return createSpecParam('path', param, {
-              knownNames: pathParams,
-              required: true
-            }) ||
+          return createSpecParam('path', param, {knownNames: pathParams, required: true}) ||
             createSpecParam('body', param) ||
             createSpecParam('query', param, {knownNames: [param.name]}); // default, always last
         });
-        let response = (action.response && action.response.status) || 200;
+        let response = action.response && action.response.status || 200;
         specMethod.responses[response] = {
           description: 'Success'
         };
@@ -94,6 +96,8 @@ module.exports = function(spec) {
         router[method](path, function*() {
 
           let args = [];
+          let bodyAdded;
+          let queryAdded;
           for (var i = 0; i < specMethod.parameters.length; i++) {
             var param = specMethod.parameters[i];
             if (param.in === 'path') {
@@ -101,20 +105,24 @@ module.exports = function(spec) {
             } else if (param.in === 'body') {
               let body = yield parse(this);
               if (param.name === 'body') {
-                args.push(body);
+                if (!bodyAdded) {
+                  args.push(body);
+                  bodyAdded = true;
+                }
               } else {
                 args.push(body[param.name]);
               }
             } else if (param.in === 'query') {
-              args.push(this.query[param.name]);
+              if (!queryAdded) {
+                args.push(this.query);
+                queryAdded = true;
+              }
             }
           }
-
           if (action.operation.doBefore) {
             args = action.operation.doBefore.apply(this, args);
           }
           //todo check if it is a generator or a promise
-          console.log('args', args)
           let promise = api[action.operation.name].apply(api, args);
           let result = yield promise;
           if (action.operation.doAfter) {

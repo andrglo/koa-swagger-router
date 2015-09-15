@@ -10,7 +10,10 @@
     ],
     "indent": [
       2,
-      2
+      2,
+      {
+        "SwitchCase": 1
+      }
     ],
     "one-var": [
       2,
@@ -130,12 +133,12 @@
     "no-return-assign": 2,
     "no-script-url": 2,
     "no-sequences": 2,
-    "no-unused-expressions": 2,
+    "no-unused-expressions": 1,
     "yoda": 2,
     "no-delete-var": 2,
     "no-label-var": 2,
     "no-shadow-restricted-names": 2,
-    "no-shadow": 1,
+    "no-shadow": 0,
     "no-undef-init": 2,
     "no-undef": 2,
     "no-unused-vars": [
@@ -158,7 +161,7 @@
     "no-spaced-func": 2,
     "no-trailing-spaces": 2,
     "no-underscore-dangle": 2,
-    "no-wrap-func": 2,
+    "no-extra-parens": 2,
     "semi-spacing": [
       2,
       {
