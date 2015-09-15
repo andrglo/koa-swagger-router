@@ -29,14 +29,14 @@ var defaultSpec = {
   host: 'localhost'
 };
 
-var log = function(name, obj) {
-  console.log(name);
-  console.dir(obj, {
-    showHidden: true,
-    depth: null,
-    colors: true
-  });
-};
+//var log = function(name, obj) {
+//  console.log(name);
+//  console.dir(obj, {
+//    showHidden: true,
+//    depth: null,
+//    colors: true
+//  });
+//};
 
 module.exports = function(spec) {
 
@@ -128,13 +128,13 @@ module.exports = function(spec) {
           if (action.operation.doAfter) {
             result = action.operation.doAfter.call(this, result);
           }
-          if (result === void 0) {
+          if (action.response && action.response.status) {
+            this.body = result;
+            this.status = action.response.status;
+          } else if (result === void 0) {
             this.status = 404;
           } else {
             this.body = result;
-            if (action.response && action.response.status) {
-              this.status = action.response.status;
-            }
           }
         });
       });

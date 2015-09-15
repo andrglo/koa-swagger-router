@@ -157,6 +157,14 @@ module.exports = function(options) {
         })
         .end(logError(done));
     });
+    it('delete charlie', function(done) {
+      agent
+        .delete('/person/Charlie')
+        .send(charlie)
+        .set('Accept', 'application/json')
+        .expect(204)
+        .end(logError(done));
+    });
   });
 
 };
@@ -312,9 +320,6 @@ function entityMethods(entity, id, schemaName) {
         ],
         doBefore: function(id, updatedAt) {
           return [buildCriteria(id, updatedAt)];
-        },
-        doAfter: function(recordset) {
-          return recordset[0];
         }
       },
       response: {
