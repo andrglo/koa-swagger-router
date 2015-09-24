@@ -42,6 +42,7 @@
     "co-body": "^4.0.0",
     "findup-sync": "^0.3.0",
     "koa-router": "^5.1.2",
+    "methods": "^1.1.1",
     "title-case": "^1.1.1"
   }
 }

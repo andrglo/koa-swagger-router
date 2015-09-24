@@ -10,7 +10,7 @@ var gutil = require('gulp-util');
 var parser = require('swagger-parser');
 var parseBody = require('co-body');
 
-var routerFactory = require('../src');
+var RouterFactory = require('../src');
 
 function logError(done) {
   return function(error, res) {
@@ -38,8 +38,8 @@ module.exports = function(options) {
   var router;
   before(function() {
     var app = koa();
-    router = routerFactory();
-    router.addDefinition('other', {
+    router = new RouterFactory();
+    router.spec.addDefinition('other', {
       myProperty: 'invalid swagger',
       properties: {
         name: {
@@ -68,13 +68,13 @@ module.exports = function(options) {
   describe('resource', function() {
     var charlie;
     it('should have a valid swagger structure', function(done) {
-      parser.validate(router.spec(), {
+      parser.validate(router.spec.get(), {
         $refs: {
           internal: false   // Don't dereference internal $refs, only external
         }
       }, function(err) {
         if (err) {
-          gutil.log('Swagger specification:\n', JSON.stringify(router.spec(), null, '  '));
+          gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
           gutil.log('Error:\n', gutil.colors.red(err));
         }
         done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
@@ -114,8 +114,8 @@ module.exports = function(options) {
       agent
         .put('/person/' + charlie.name)
         .send(charlie)
-        .expect('Content-Type', /json/)
         .expect(200)
+        .expect('Content-Type', /json/)
         .expect(function(res) {
           let record = charlie = res.body;
           record.should.have.property('address');
@@ -351,7 +351,7 @@ function addStandardEntityMethods(router, name, entity) {
   }
 
   let schema = entity.getSchema();
-  router.addDefinition(name, schema);
+  router.spec.addDefinition(name, schema);
 
   let queryColumns = [];
   Object.keys(schema.properties).map(function(key) {
@@ -366,7 +366,7 @@ function addStandardEntityMethods(router, name, entity) {
   });
 
   router
-    .get(name, function*() {
+    .get(`/${name}`, function*() {
       let criteria = this.query.criteria;
       if (criteria) {
         criteria = JSON.parse(criteria);
@@ -386,16 +386,16 @@ function addStandardEntityMethods(router, name, entity) {
     })
     .params([{
       name: 'criteria',
-      description: 'Filter, order and or pagination to apply',
-      type: 'string'
+      description: 'Filter, order and or pagination to apply'
     }].concat(queryColumns))
-    .responses({
+    .onSuccess({
       type: 'array',
       schema: name
     });
 
+  var primaryKey = 'name'; //todo implement entity.primaryKey;
   router
-    .get(`${name}/:${entity.primaryKey()}`, function*() {
+    .get(`/${name}/:${primaryKey}`, function*() {
       let recordset = yield entity.fetch(buildCriteria(this.params[entity.primaryKey]));
       this.body = recordset.length ? recordset[0] : void 0;
     })
@@ -404,27 +404,83 @@ function addStandardEntityMethods(router, name, entity) {
       description: 'Filter, order and or pagination to apply',
       type: 'string'
     }].concat(queryColumns))
-    .responses({
+    .onSuccess({
       type: 'array',
       schema: name
     });
 
   router
-    .post(name, function*() {
+    .post(`/${name}`, function*() {
       let body = yield parseBody(this);
       this.body = yield entity.create(body);
       this.status = 201;
     })
-    .params([{
+    .params({
+      in: 'body',
       name: 'body',
       description: `${name} to be added`,
       required: true,
       schema: name
-    }])
-    .responses({
+    })
+    .onSuccess({
       type: 'object',
       schema: name
+    }, 201);
+
+  router
+    .put(`/${name}/:${primaryKey}`, function*() {
+      let body = yield parseBody(this);
+      let id = this.params[entity.primaryKey];
+      this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
+    })
+    .params([{
+      in: 'path',
+      name: primaryKey,
+      description: 'Object id'
+    }, {
+      name: 'body',
+      description: `${primaryKey} to be updated`,
+      required: true,
+      schema: name
+    }])
+    .onSuccess({
+      type: 'array',
+      schema: name
     });
+
+  router
+    .delete(`/${name}/:${primaryKey}`, function*() {
+      let body = yield parseBody(this);
+      let id = this.params[entity.primaryKey];
+      this.body = yield entity.destroy(buildCriteria(id, body.updatedAt));
+    })
+    .params([{
+      in: 'path',
+      name: primaryKey,
+      description: 'Object id',
+      required: true,
+      type: 'integer'
+    }, {
+      in: 'body',
+      name: 'updatedAt',
+      description: 'Last update timestamp',
+      required: true,
+      schema: {
+        type: 'object',
+        properties: {
+          updatedAt: {
+            type: 'string',
+            format: 'date-time'
+          }
+        }
+      }
+    }])
+    .onSuccess({
+      description: 'Success'
+    }, 204)
+    .onError({
+      description: 'Error'
+    }, 400);
 }
 
 
