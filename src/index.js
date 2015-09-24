@@ -25,6 +25,13 @@ var defaultSpec = {
       name: pack.private === true ? 'Proprietary' : pack.license
     }
   },
+  produces: [
+    'application/json',
+    'text/plain; charset=utf-8'
+  ],
+  schemes: [
+    'http'
+  ],
   basePath: '/',
   host: 'localhost'
 };

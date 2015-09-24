@@ -8,6 +8,7 @@ var expect = chai.expect;
 chai.should();
 var gutil = require('gulp-util');
 var parser = require('swagger-parser');
+var parseBody = require('co-body');
 
 var routerFactory = require('../src');
 
@@ -37,48 +38,29 @@ module.exports = function(options) {
   var router;
   before(function() {
     var app = koa();
-    router = routerFactory({
-      produces: [
-        'application/json',
-        'text/plain; charset=utf-8'
-      ],
-      schemes: [
-        'http'
-      ],
-      securityDefinitions: {
-        apiKey: {
-          type: 'apiKey',
-          name: 'key',
-          in: 'header'
-        }
-      }
-    });
-    router.add('person',
-      options.entity,
-      entityMethods(options.entity, 'name', 'person'), {
-        person: options.entity.getSchema(),
-        other: {
-          myProperty: 'invalid swagger',
+    router = routerFactory();
+    router.addDefinition('other', {
+      myProperty: 'invalid swagger',
+      properties: {
+        name: {
+          type: 'array',
+          items: {
+            type: 'string',
+            description: 'none'
+          }
+        },
+        otherProperty: {
+          type: 'object',
+          format: 'none',
           properties: {
             name: {
-              type: 'array',
-              items: {
-                type: 'string',
-                description: 'none'
-              }
-            },
-            otherProperty: {
-              type: 'object',
-              format: 'none',
-              properties: {
-                name: {
-                  type: 'string'
-                }
-              }
+              type: 'string'
             }
           }
         }
-      });
+      }
+    });
+    addStandardEntityMethods(router, 'person', options.entity);
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });
@@ -355,6 +337,94 @@ function entityMethods(entity, id, schemaName) {
     }
   };
 
+}
+
+function addStandardEntityMethods(router, name, entity) {
+
+  function buildCriteria(key, updatedAt) {
+    let criteria = {where: {}};
+    criteria.where[id] = key;
+    if (updatedAt !== void 0) {
+      criteria.where.updatedAt = updatedAt;
+    }
+    return criteria;
+  }
+
+  let schema = entity.getSchema();
+  router.addDefinition(name, schema);
+
+  let queryColumns = [];
+  Object.keys(schema.properties).map(function(key) {
+    let column = schema.properties[key];
+    if (column.type !== 'object' && column.type !== 'array') {
+      queryColumns.push({
+        name: key,
+        description: column.description,
+        type: column.type
+      });
+    }
+  });
+
+  router
+    .get(name, function*() {
+      let criteria = this.query.criteria;
+      if (criteria) {
+        criteria = JSON.parse(criteria);
+        criteria.where = criteria.where || {};
+      } else {
+        criteria = {
+          where: {}
+        };
+      }
+      queryColumns.forEach(column => {
+        let value = this.query[column.name];
+        if (value) {
+          criteria.where[column.name] = value;
+        }
+      });
+      this.body = yield entity.fetch(criteria);
+    })
+    .params([{
+      name: 'criteria',
+      description: 'Filter, order and or pagination to apply',
+      type: 'string'
+    }].concat(queryColumns))
+    .responses({
+      type: 'array',
+      schema: name
+    });
+
+  router
+    .get(`${name}/:${entity.primaryKey()}`, function*() {
+      let recordset = yield entity.fetch(buildCriteria(this.params[entity.primaryKey]));
+      this.body = recordset.length ? recordset[0] : void 0;
+    })
+    .params([{
+      name: 'criteria',
+      description: 'Filter, order and or pagination to apply',
+      type: 'string'
+    }].concat(queryColumns))
+    .responses({
+      type: 'array',
+      schema: name
+    });
+
+  router
+    .post(name, function*() {
+      let body = yield parseBody(this);
+      this.body = yield entity.create(body);
+      this.status = 201;
+    })
+    .params([{
+      name: 'body',
+      description: `${name} to be added`,
+      required: true,
+      schema: name
+    }])
+    .responses({
+      type: 'object',
+      schema: name
+    });
 }
 
 
