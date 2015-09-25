@@ -101,6 +101,15 @@ class Method {
     return this;
   }
 
+  getSuccessStatus() {
+    var data = methodsData.get(this);
+    Object.key(data.onSuccess) //todo continue
+  }
+
+  getErrorStatus() {
+
+  }
+
   onError(response, status) {
     var data = methodsData.get(this);
     if (containsStatus(response)) {
@@ -176,7 +185,13 @@ methods.forEach(function(method) {
         yield *middleware.call(this, next);
         this.status = this.status || specMethod.getSuccessStatus();
       } catch (e) {
-        this.status = this.status || specMethod.getErrorStatus();
+        //todo check for registered error types
+        //console.log('ERROR', this.status, e)
+        //if (registeredErrorType) {
+        //  this.status = specMethod.getErrorStatus();
+        //} else {
+          this.throw(500, e);
+        //}
       }
     });
     return specMethod;
@@ -339,7 +354,9 @@ function toSpecParam(param) {
   } else {
     specParam.type = param.type || 'string';
   }
-  specParam.format = param.format;
+  if (param.format) {
+    specParam.format = param.format;
+  }
   return specParam;
 }
 

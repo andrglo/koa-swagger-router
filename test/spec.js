@@ -74,8 +74,8 @@ module.exports = function(options) {
         }
       }, function(err) {
         if (err) {
-          gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
-          gutil.log('Error:\n', gutil.colors.red(err));
+          //gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
+          //gutil.log('Error:\n', gutil.colors.red(err));
         }
         done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
       });
@@ -350,7 +350,7 @@ function addStandardEntityMethods(router, name, entity) {
     return criteria;
   }
 
-  let schema = entity.getSchema();
+  let schema = entity.schema.get();
   router.spec.addDefinition(name, schema);
 
   let queryColumns = [];
@@ -393,7 +393,7 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     });
 
-  var primaryKey = 'name'; //todo implement entity.primaryKey;
+  var primaryKey = entity.schema.primaryKey()[0];
   router
     .get(`/${name}/:${primaryKey}`, function*() {
       let recordset = yield entity.fetch(buildCriteria(this.params[entity.primaryKey]));
@@ -451,7 +451,7 @@ function addStandardEntityMethods(router, name, entity) {
   router
     .delete(`/${name}/:${primaryKey}`, function*() {
       let body = yield parseBody(this);
-      let id = this.params[entity.primaryKey];
+      let id = this.params[primaryKey];
       this.body = yield entity.destroy(buildCriteria(id, body.updatedAt));
     })
     .params([{
