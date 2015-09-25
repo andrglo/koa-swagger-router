@@ -27,9 +27,9 @@
     "gulp-mocha": "^2.0.0",
     "gulp-nsp": "^0.4.5",
     "gulp-util": "^3.0.6",
-    "json-schema-entity": "^0.4.3",
+    "json-schema-entity": "^0.5.1",
     "koa": "^1.0.0",
-    "pg-cr-layer": "0.0.4",
+    "pg-cr-layer": "0.0.5",
     "supertest": "^1.1.0",
     "swagger-parser": "^3.0.0-alpha.9"
   },
