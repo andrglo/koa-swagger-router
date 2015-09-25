@@ -73,7 +73,7 @@ module.exports = function(options) {
           gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
           gutil.log('Error:\n', gutil.colors.red(err));
         }
-        done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
+        done(err);
       });
     });
     it('no person exists', function(done) {
@@ -162,6 +162,17 @@ function addStandardEntityMethods(router, name, entity) {
 
   let schema = entity.schema.get();
   router.spec.addDefinition(name, schema);
+  router.spec.addDefinition('EntityError', { //todo
+    properties: {
+      name: {
+        type: 'array',
+        items: {
+          type: 'string',
+          description: 'none'
+        }
+      }
+    }
+  });
 
   let queryColumns = [];
   Object.keys(schema.properties).map(function(key) {
@@ -192,33 +203,49 @@ function addStandardEntityMethods(router, name, entity) {
           criteria.where[column.name] = value;
         }
       });
-      this.body = yield entity.fetch(criteria);
-
+      try {
+        this.body = yield entity.fetch(criteria);
+      } catch (error) {
+        if (error.name === 'EntityError') {
+          this.throw(400, error);
+        } else {
+          this.throw(error);
+        }
+      }
     })
     .params([{
       name: 'criteria',
       description: 'Filter, order and or pagination to apply'
     }].concat(queryColumns))
     .onSuccess({
-      type: 'array',
-      schema: name
+      items: name
     });
 
   router
     .get(`/${name}/:${primaryKey}`, function*() {
-      let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
-      if (recordset.length) {
-        this.body = recordset[0];
+      try {
+        let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
+        if (recordset.length) {
+          this.body = recordset[0];
+        }
+      } catch (error) {
+        if (error.name === 'EntityError') {
+          this.throw(400, error);
+        } else {
+          this.throw(error);
+        }
       }
     })
-    .params([{
-      name: 'criteria',
-      description: 'Filter, order and or pagination to apply',
-      type: 'string'
-    }].concat(queryColumns))
+    .params({
+      in: 'path',
+      name: primaryKey,
+      description: `${name} to be find`,
+    })
     .onSuccess({
-      type: 'array',
-      schema: name
+      items: name
+    })
+    .onError({
+      schema: 'EntityError'
     });
 
   router
@@ -235,7 +262,6 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     })
     .onSuccess({
-      type: 'object',
       schema: name
     }, 201);
 
@@ -265,8 +291,7 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     }])
     .onSuccess({
-      type: 'array',
-      schema: name
+      items: name
     });
 
   router

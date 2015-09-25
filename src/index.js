@@ -188,7 +188,7 @@ function toSpecParam(param) {
   let specParam = {};
   specParam.in = param.in || 'query';
   specParam.name = param.name;
-  specParam.description = param.description;
+  specParam.description = param.description || '';
   specParam.required = specParam.in === 'path' ? true : param.required === true || false;
   if (param.schema) {
     specParam.schema = typeof param.schema === 'string' ? {
@@ -212,13 +212,18 @@ function toSpecResponses(responses) {
     .forEach(status => {
       let response = responses[status];
       if (typeof response.schema === 'string') {
-        if (response.type === 'array') {
-          //todo
-        } else {
-          response.schema = {
-            $ref: `#/definitions/${response.schema}`
-          };
-        }
+        response.schema = {
+          $ref: `#/definitions/${response.schema}`
+        };
+      }
+      if (typeof response.items === 'string') {
+        response.schema = {
+          type: 'array',
+          items: {
+            $ref: `#/definitions/${response.items}`
+          }
+        };
+        delete response.items;
       }
       response.description = response.description || '';
     });

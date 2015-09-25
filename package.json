@@ -31,7 +31,7 @@
     "koa": "^1.0.0",
     "pg-cr-layer": "0.0.5",
     "supertest": "^1.1.0",
-    "swagger-parser": "^3.0.0-alpha.9"
+    "swagger-parser": "^3.0.0"
   },
   "scripts": {
     "prepublish": "gulp prepublish",
@@ -43,6 +43,7 @@
     "findup-sync": "^0.3.0",
     "koa-router": "^5.1.2",
     "methods": "^1.1.1",
+    "swagger-parser": "^3.0.0",
     "title-case": "^1.1.1"
   }
 }
