@@ -23,14 +23,10 @@ function logError(done) {
   };
 }
 
-var log = function(name, obj) {
-  console.log(name);
-  console.dir(obj, {
-    showHidden: true,
-    depth: null,
-    colors: true
-  });
-};
+function log() {
+  console.log.apply(null, Array.prototype.slice.call(arguments)
+    .map(arg => JSON.stringify(arg, null, '  ')));
+}
 
 module.exports = function(options) {
 
@@ -74,8 +70,8 @@ module.exports = function(options) {
         }
       }, function(err) {
         if (err) {
-          //gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
-          //gutil.log('Error:\n', gutil.colors.red(err));
+          gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
+          gutil.log('Error:\n', gutil.colors.red(err));
         }
         done(/*err*/); // todo The swagger.editor validate, swagger-parser don't
       });
@@ -151,199 +147,13 @@ module.exports = function(options) {
 
 };
 
-function entityMethods(entity, id, schemaName) {
-
-  function buildCriteria(key, updatedAt) {
-    let criteria = {where: {}};
-    criteria.where[id] = key;
-    if (updatedAt !== void 0) {
-      criteria.where.updatedAt = updatedAt;
-    }
-    return criteria;
-  }
-
-  let schema = entity.getSchema();
-  let queryColumns = [];
-  Object.keys(schema.properties).map(function(key) {
-    let column = schema.properties[key];
-    if (column.type !== 'object' && column.type !== 'array') {
-      queryColumns.push({
-        name: key,
-        description: column.description,
-        type: column.type
-      });
-    }
-  });
-
-  return {
-
-    get: {
-      operation: {
-        name: 'fetch',
-        params: [
-          {
-            name: 'criteria',
-            description: 'Filter, order and or pagination to apply',
-            type: 'string'
-          }
-        ].concat(queryColumns),
-        doBefore: function(query) {
-          let criteria = query.criteria;
-          if (criteria) {
-            criteria = JSON.parse(criteria);
-            criteria.where = criteria.where || {};
-          } else {
-            criteria = {
-              where: {}
-            };
-          }
-          queryColumns.forEach(function(column) {
-            let value = query[column.name];
-            if (value) {
-              criteria.where[column.name] = value;
-            }
-          });
-          return [criteria];
-        }
-      },
-      response: {
-        type: 'array',
-        schema: schemaName
-      },
-      security: [{apiKey: []}]
-    },
-    post: {
-      operation: {
-        name: 'create',
-        params: [
-          {
-            name: 'body',
-            description: `${schemaName} to be added`,
-            required: true,
-            schema: schemaName
-          }
-        ]
-      },
-      response: {
-        status: 201,
-        schema: schemaName
-      },
-      security: [{apiKey: []}]
-    },
-    [`get :${id}`]: {
-      operation: {
-        name: 'fetch',
-        params: [
-          {
-            name: `path.${id}`,
-            description: 'Object id'
-          }
-        ],
-        doBefore: function(id) {
-          return [buildCriteria(id)];
-        },
-        doAfter: function(recordset) {
-          return recordset.length ? recordset[0] : void 0;
-        }
-      },
-      response: {
-        type: 'object',
-        schema: schemaName
-      },
-      security: [{apiKey: []}]
-    },
-    [`put :${id}`]: {
-      operation: {
-        name: 'update',
-        params: [
-          {
-            name: `${id}`,
-            description: 'Object id'
-          },
-          {
-            name: 'body',
-            description: `${schemaName} to be updated`,
-            required: true,
-            schema: schemaName
-          }
-        ],
-        doBefore: function(id, body) {
-          return [body, buildCriteria(id, body.updatedAt)];
-        }
-      },
-      response: {
-        type: 'array',
-        schema: schemaName
-      },
-      security: [{apiKey: []}]
-    },
-    [`delete :${id}`]: {
-      operation: {
-        name: 'destroy',
-        params: [
-          {
-            name: `path.${id}`,
-            description: 'Object id'
-          },
-          {
-            name: 'body.updatedAt',
-            description: 'Last update timestamp',
-            required: true,
-            schema: {
-              type: 'object',
-              properties: {
-                updatedAt: {
-                  type: 'string',
-                  format: 'date-time'
-                }
-              }
-            }
-          }
-        ],
-        doBefore: function(id, updatedAt) {
-          return [buildCriteria(id, updatedAt)];
-        }
-      },
-      response: {
-        status: 204
-      },
-      security: [{apiKey: []}]
-    },
-    [`delete :${id}/:none/:abc`]: {
-      operation: {
-        name: 'destroy',
-        params: [
-          {
-            name: `path.${id}`,
-            description: 'Object id'
-          },
-          {
-            name: 'path.none',
-            description: 'Object name'
-          },
-          {
-            name: 'path.abc',
-            description: 'Object abc'
-          },
-          {
-            name: 'body'
-          }
-        ]
-      },
-      response: {
-        status: 204
-      },
-      security: [{apiKey: []}]
-    }
-  };
-
-}
-
 function addStandardEntityMethods(router, name, entity) {
 
+  var primaryKey = entity.schema.primaryKey()[0];
+
   function buildCriteria(key, updatedAt) {
     let criteria = {where: {}};
-    criteria.where[id] = key;
+    criteria.where[primaryKey] = key;
     if (updatedAt !== void 0) {
       criteria.where.updatedAt = updatedAt;
     }
@@ -383,6 +193,7 @@ function addStandardEntityMethods(router, name, entity) {
         }
       });
       this.body = yield entity.fetch(criteria);
+
     })
     .params([{
       name: 'criteria',
@@ -393,11 +204,12 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     });
 
-  var primaryKey = entity.schema.primaryKey()[0];
   router
     .get(`/${name}/:${primaryKey}`, function*() {
-      let recordset = yield entity.fetch(buildCriteria(this.params[entity.primaryKey]));
-      this.body = recordset.length ? recordset[0] : void 0;
+      let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
+      if (recordset.length) {
+        this.body = recordset[0];
+      }
     })
     .params([{
       name: 'criteria',
@@ -430,15 +242,24 @@ function addStandardEntityMethods(router, name, entity) {
   router
     .put(`/${name}/:${primaryKey}`, function*() {
       let body = yield parseBody(this);
-      let id = this.params[entity.primaryKey];
-      this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
+      let id = this.params[primaryKey];
+      try {
+        this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
+      } catch (error) {
+        if (error.name === 'EntityError') {
+          this.throw(400, error);
+        } else {
+          this.throw(error);
+        }
+      }
     })
     .params([{
       in: 'path',
       name: primaryKey,
       description: 'Object id'
     }, {
-      name: 'body',
+      in: 'body',
+      name: 'updatedAt',
       description: `${primaryKey} to be updated`,
       required: true,
       schema: name
