@@ -203,15 +203,7 @@ function addStandardEntityMethods(router, name, entity) {
           criteria.where[column.name] = value;
         }
       });
-      try {
-        this.body = yield entity.fetch(criteria);
-      } catch (error) {
-        if (error.name === 'EntityError') {
-          this.throw(400, error);
-        } else {
-          this.throw(error);
-        }
-      }
+      this.body = yield entity.fetch(criteria);
     })
     .params([{
       name: 'criteria',
@@ -219,27 +211,22 @@ function addStandardEntityMethods(router, name, entity) {
     }].concat(queryColumns))
     .onSuccess({
       items: name
+    })
+    .onError({
+      schema: 'EntityError'
     });
 
   router
     .get(`/${name}/:${primaryKey}`, function*() {
-      try {
-        let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
-        if (recordset.length) {
-          this.body = recordset[0];
-        }
-      } catch (error) {
-        if (error.name === 'EntityError') {
-          this.throw(400, error);
-        } else {
-          this.throw(error);
-        }
+      let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
+      if (recordset.length) {
+        this.body = recordset[0];
       }
     })
     .params({
       in: 'path',
       name: primaryKey,
-      description: `${name} to be find`,
+      description: `${name} to be find`
     })
     .onSuccess({
       items: name
@@ -252,7 +239,6 @@ function addStandardEntityMethods(router, name, entity) {
     .post(`/${name}`, function*() {
       let body = yield parseBody(this);
       this.body = yield entity.create(body);
-      this.status = 201;
     })
     .params({
       in: 'body',
@@ -262,22 +248,18 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     })
     .onSuccess({
-      schema: name
-    }, 201);
+      schema: name,
+      status: 201
+    })
+    .onError({
+      schema: 'EntityError'
+    });
 
   router
     .put(`/${name}/:${primaryKey}`, function*() {
       let body = yield parseBody(this);
       let id = this.params[primaryKey];
-      try {
-        this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
-      } catch (error) {
-        if (error.name === 'EntityError') {
-          this.throw(400, error);
-        } else {
-          this.throw(error);
-        }
-      }
+      this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
     })
     .params([{
       in: 'path',
@@ -292,6 +274,9 @@ function addStandardEntityMethods(router, name, entity) {
     }])
     .onSuccess({
       items: name
+    })
+    .onError({
+      schema: 'EntityError'
     });
 
   router
@@ -322,11 +307,11 @@ function addStandardEntityMethods(router, name, entity) {
       }
     }])
     .onSuccess({
-      description: 'Success'
-    }, 204)
+      status: 204
+    })
     .onError({
-      description: 'Error'
-    }, 400);
+      schema: 'EntityError'
+    });
 }
 
 

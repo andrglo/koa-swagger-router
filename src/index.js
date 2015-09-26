@@ -40,17 +40,21 @@ var log = function() {
     .map(arg => JSON.stringify(arg, null, '  ')));
 };
 
-const onSuccess = {
-  200: {
-    description: 'Success'
+const onSuccess = [
+  {
+    200: {
+      description: 'Success'
+    }
   }
-};
+];
 
-const onError = {
-  400: {
-    description: 'Error'
+const onError = [
+  {
+    400: {
+      description: 'Error'
+    }
   }
-};
+];
 
 var methodsData = new WeakMap();
 
@@ -84,26 +88,39 @@ class Method {
     return this;
   }
 
-  onSuccess(response, status) {
+  onSuccess(response) {
     var data = methodsData.get(this);
-    if (containsStatus(response)) {
-      data.onSuccess = toSpecResponses(response);
-    } else {
-      data.onSuccess = toSpecResponses({[status || 200]: response});
-    }
-    data.spec.responses = Object.assign({}, data.onSuccess, data.onError);
+    data.onSuccess = [];
+    toArray(response)
+      .forEach(response => data.onSuccess.push(toSpecResponse(response, 200)));
+    data.spec.responses = Object.assign({},
+      data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
+      data.onError.reduce((result, response) => Object.assign(result, response)), {});
     return this;
   }
 
-  onError(response, status) {
+  onError(response) {
     var data = methodsData.get(this);
-    if (containsStatus(response)) {
-      data.onError = toSpecResponses(response);
-    } else {
-      data.onError = toSpecResponses({[status || 400]: response});
-    }
-    data.spec.responses = Object.assign({}, data.onSuccess, data.onError);
+    data.onError = [];
+    toArray(response)
+      .forEach(response => data.onError.push(toSpecResponse(response, 400)));
+    data.spec.responses = Object.assign({},
+      data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
+      data.onError.reduce((result, response) => Object.assign(result, response)), {});
     return this;
+  }
+
+  successStatuses() {
+    var data = methodsData.get(this);
+    return data.onSuccess.map(response => Number(Object.keys(response)[0]));
+  }
+
+  errors() {
+    var data = methodsData.get(this);
+    return data.onError.map(response => ({
+      status: Number(Object.keys(response)[0]),
+      name: response.name
+    }));
   }
 }
 
@@ -168,12 +185,24 @@ methods.forEach(function(method) {
     it.router[method](path, function*(next) {
       try {
         yield *middleware.call(this, next);
-      } catch (error) {
-        this.status = error.status || 500;
-        if (this.status < 500) {
-          this.body = error;
+        if (this.body !== void 0) {
+          let successStatus = specMethod.successStatuses();
+          if (successStatus.indexOf(this.status) === -1) {
+            this.status = successStatus[0];
+          }
         }
-        this.app.emit('error', error, this);
+      } catch (e) {
+        let errors = specMethod.errors();
+        errors.forEach(error => {
+          if (e.name === error.name) {
+            e.status = error.status;
+          }
+        });
+        this.status = e.status || 500;
+        if (this.status < 500) {
+          this.body = e;
+        }
+        this.app.emit('error', e, this);
       }
     });
     return specMethod;
@@ -207,32 +236,31 @@ function toSpecParam(param) {
   return specParam;
 }
 
-function toSpecResponses(responses) {
-  Object.keys(responses)
-    .forEach(status => {
-      let response = responses[status];
-      if (typeof response.schema === 'string') {
-        response.schema = {
-          $ref: `#/definitions/${response.schema}`
-        };
+function toSpecResponse(response, status) {
+  let specResponse = {};
+  let statusObject = specResponse[response.status || status] = {};
+  Object.defineProperty(statusObject, 'name', {
+    value: response.name,
+    writable: true
+  });
+  if (typeof response.schema === 'string') {
+    statusObject.schema = {
+      $ref: `#/definitions/${response.schema}`
+    };
+    statusObject.name = response.name || response.schema;
+  }
+  if (typeof response.items === 'string') {
+    statusObject.schema = {
+      type: 'array',
+      items: {
+        $ref: `#/definitions/${response.items}`
       }
-      if (typeof response.items === 'string') {
-        response.schema = {
-          type: 'array',
-          items: {
-            $ref: `#/definitions/${response.items}`
-          }
-        };
-        delete response.items;
-      }
-      response.description = response.description || '';
-    });
-  return responses;
-}
-
-function containsStatus(response) {
-  return Object.keys(response)
-    .reduce((res, key) => res === false ? res : !isNaN(key), true);
+    };
+    statusObject.name = response.name || response.schema;
+    delete response.items;
+  }
+  statusObject.description = response.description || status >= 400 ? 'Error' : 'Success';
+  return specResponse;
 }
 
 function toJsonSchema(schema, level) {

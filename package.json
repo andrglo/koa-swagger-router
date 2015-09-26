@@ -20,6 +20,7 @@
   ],
   "devDependencies": {
     "chai": "^3.2.0",
+    "co-body": "^4.0.0",
     "gulp": "^3.6.0",
     "gulp-coveralls": "^0.1.0",
     "gulp-eslint": "^1.0.0",
@@ -39,11 +40,9 @@
   },
   "license": "MIT",
   "dependencies": {
-    "co-body": "^4.0.0",
     "findup-sync": "^0.3.0",
     "koa-router": "^5.1.2",
     "methods": "^1.1.1",
-    "swagger-parser": "^3.0.0",
     "title-case": "^1.1.1"
   }
 }
