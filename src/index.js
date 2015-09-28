@@ -131,7 +131,7 @@ class Spec {
     let it = {};
     it.spec = Object.assign({}, defaultSpec, spec);
     it.spec.paths = spec && spec.paths || {};
-    it.spec.definitions = spec && spec.definitions || {}
+    it.spec.definitions = spec && spec.definitions || {};
     specsData.set(this, it);
   }
 
@@ -334,6 +334,19 @@ function toJsonSchema(schema, level) {
             property.items[key] = value;
           });
         }
+      } else if (property.schema) {
+        let schema = {};
+        if (property.schema.$ref) {
+          schema['x-$ref'] = property.schema.$ref;
+        }
+        if (property.schema.key) {
+          schema['x-key'] = property.schema.key;
+        }
+        property['x-schema'] = schema;
+        delete property.schema;
+      } else if (property.$ref) {
+        property['x-$ref'] = property.$ref;
+        delete property.$ref;
       }
       definition.properties[key] = property;
     }

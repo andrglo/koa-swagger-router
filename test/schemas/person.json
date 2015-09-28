@@ -11,6 +11,19 @@
       "type": "string",
       "maxLength": 45
     },
+    "account": {
+      "type": "string",
+      "maxLength": 5,
+      "schema": {
+        "$ref": "account",
+        "key": "code"
+      }
+    },
+    "event": {
+      "type": "string",
+      "maxLength": 5,
+      "$ref": "event"
+    },
     "code": {
       "type": "string",
       "enum": [
