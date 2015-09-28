@@ -230,6 +230,8 @@ function toSpecParam(param) {
       specParam.items = specParam.schema;
       delete specParam.schema;
     }
+  } else if (['date', 'datetime', 'time'].indexOf(param.type) !== -1) {
+    specParam.type = 'string';
   } else {
     specParam.type = param.type || 'string';
   }
@@ -316,6 +318,10 @@ function toJsonSchema(schema, level) {
     });
     if (property.enum && property.maxLength) {
       delete property.maxLength;
+    }
+    if (['date', 'datetime', 'time'].indexOf(property.type) !== -1) {
+      property.format = property.type;
+      property.type = 'string';
     }
     if (property.type === 'object') {
       definition.properties[key] = toJsonSchema(property, level + 1);

@@ -24,6 +24,9 @@
       "maxLength": 5,
       "$ref": "event"
     },
+    "birthDate": {
+      "type": "date"
+    },
     "code": {
       "type": "string",
       "enum": [
