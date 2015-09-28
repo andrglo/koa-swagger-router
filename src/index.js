@@ -137,9 +137,6 @@ class Spec {
 
   addDefinition(name, definition) {
     let it = specsData.get(this);
-    if (it.spec.definitions[name]) {
-      throw new Error('Definition "' + name + '" already exists');
-    }
     it.spec.definitions[name] = toJsonSchema(definition);
   }
 
