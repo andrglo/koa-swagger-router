@@ -64,17 +64,37 @@ module.exports = function(options) {
   describe('resource', function() {
     var charlie;
     it('should have a valid swagger structure', function(done) {
-      parser.validate(router.spec.get(), {
-        $refs: {
-          internal: false   // Don't dereference internal $refs, only external
-        }
-      }, function(err) {
-        if (err) {
-          gutil.log('Swagger specification:\n', JSON.stringify(router.spec.get(), null, '  '));
-          gutil.log('Error:\n', gutil.colors.red(err));
-        }
-        done(err);
-      });
+      agent
+        .get('/')
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .end(function(err, res) {
+          let spec = res.body;
+          parser.validate(spec, {
+            $refs: {
+              internal: false   // Don't dereference internal $refs, only external
+            }
+          }, function(err) {
+            if (err) {
+              gutil.log('Swagger specification:\n', JSON.stringify(spec, null, '  '));
+              gutil.log('Error:\n', gutil.colors.red(err));
+            }
+            done(err);
+          });
+        });
+    });
+    it('should get the person definition', function(done) {
+      agent
+        .get('/?definition=person')
+        .set('Accept', 'application/json')
+        .expect('Content-Type', /json/)
+        .expect(200)
+        .expect(function(res) {
+          let definition = res.body;
+          definition.should.have.property('properties');
+        })
+        .end(logError(done));
     });
     it('no person exists', function(done) {
       agent

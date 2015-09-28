@@ -162,10 +162,16 @@ var routersData = new WeakMap();
 class Router {
 
   constructor(spec) {
-    routersData.set(this, {
-      spec: new Spec(spec),
-      router: new KoaRouter()
+    let router = new KoaRouter();
+    spec = new Spec(spec);
+    router.get('/', function*() {
+      if (this.query.definition) {
+        this.body = spec.get().definitions[this.query.definition];
+      } else {
+        this.body = spec.get();
+      }
     });
+    routersData.set(this, {spec, router});
   }
 
   get spec() {
