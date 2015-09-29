@@ -57,36 +57,52 @@ module.exports = function(options) {
       }
     });
     addStandardEntityMethods(router, 'person', options.entity);
+    router.use(function*(next) {
+      this.state.user = {role: this.header.role};
+      yield next;
+    });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });
 
   describe('resource', function() {
     var charlie;
+    it('should deny a request to the spec', function(done) {
+      agent
+        .get('/spec')
+        .expect(403)
+        .end(logError(done));
+    });
     it('should have a valid swagger structure', function(done) {
       agent
-        .get('/')
+        .get('/spec')
         .set('Accept', 'application/json')
-        .expect('Content-Type', /json/)
+        .set('role', 'any')
         .expect(200)
+        .expect('Content-Type', /json/)
         .end(function(err, res) {
-          let spec = res.body;
-          parser.validate(spec, {
-            $refs: {
-              internal: false   // Don't dereference internal $refs, only external
-            }
-          }, function(err) {
-            if (err) {
-              gutil.log('Swagger specification:\n', JSON.stringify(spec, null, '  '));
-              gutil.log('Error:\n', gutil.colors.red(err));
-            }
+          if (err) {
             done(err);
-          });
+          } else {
+            let spec = res.body;
+            parser.validate(spec, {
+              $refs: {
+                internal: false   // Don't dereference internal $refs, only external
+              }
+            }, function(err) {
+              if (err) {
+                gutil.log('Swagger specification:\n', JSON.stringify(spec, null, '  '));
+                gutil.log('Error:\n', gutil.colors.red(err));
+              }
+              done(err);
+            });
+          }
         });
     });
     it('should get the person definition', function(done) {
       agent
-        .get('/?definition=person')
+        .get('/spec?definition=person')
+        .set('role', 'any')
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(200)
@@ -99,6 +115,7 @@ module.exports = function(options) {
     it('no person exists', function(done) {
       agent
         .get('/person/8')
+        .set('role', 'any')
         .set('Accept', 'application/json')
         .expect('Content-Type', /text/)
         .expect(404)
@@ -108,6 +125,7 @@ module.exports = function(options) {
       let now = (new Date()).toISOString();
       agent
         .post('/person')
+        .set('role', 'any')
         .set('Content-Type', 'application/json')
         .send({
           name: 'Charlie'
@@ -129,6 +147,7 @@ module.exports = function(options) {
       charlie.address = 'Victoria St';
       agent
         .put('/person/' + charlie.name)
+        .set('role', 'any')
         .send(charlie)
         .expect(200)
         .expect('Content-Type', /json/)
@@ -142,6 +161,7 @@ module.exports = function(options) {
     it('read charlie', function(done) {
       agent
         .get('/person?name=Charlie')
+        .set('role', 'any')
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(200)
@@ -158,6 +178,7 @@ module.exports = function(options) {
     it('delete charlie', function(done) {
       agent
         .delete('/person/Charlie')
+        .set('role', 'any')
         .send(charlie)
         .set('Accept', 'application/json')
         .expect(204)

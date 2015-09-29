@@ -4,6 +4,8 @@ var assert = require('assert');
 var KoaRouter = require('koa-router');
 var methods = require('methods');
 var path = require('path');
+var util = require('util');
+var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
 
@@ -31,14 +33,23 @@ var defaultSpec = {
   schemes: [
     'http'
   ],
+  securityDefinitions: {
+    apiKey: {
+      type: 'apiKey',
+      name: 'key',
+      in: 'header'
+    }
+  },
   basePath: '/',
   host: 'localhost'
 };
 
-var log = function() {
-  console.log.apply(null, Array.prototype.slice.call(arguments)
-    .map(arg => JSON.stringify(arg, null, '  ')));
-};
+//var log = function() {
+//  console.log.apply(null, Array.prototype.slice.call(arguments)
+//    .map(arg => JSON.stringify(arg, null, '  ')));
+//};
+
+var log = console.log;
 
 const onSuccess = [
   {
@@ -70,7 +81,8 @@ class Method {
       tags: [prefix],
       summary: titleCase(`${method} ${prefix}`),
       description: '',
-      responses: Object.assign({}, onSuccess, onError)
+      responses: Object.assign({}, onSuccess, onError),
+      security: [{apiKey: []}]
     });
 
     methodsData.set(this, {spec, onSuccess, onError});
@@ -158,17 +170,19 @@ var routersData = new WeakMap();
 
 class Router {
 
-  constructor(spec) {
+  constructor(prefix, spec) {
+    if (!spec && util.isObject(prefix)) {
+      spec = prefix;
+      prefix = void 0;
+    }
     let router = new KoaRouter();
     spec = new Spec(spec);
-    router.get('/', function*() {
-      if (this.query.definition) {
-        this.body = spec.get().definitions[this.query.definition];
-      } else {
-        this.body = spec.get();
-      }
-    });
-    routersData.set(this, {spec, router});
+    routersData.set(this, {prefix, spec, router});
+  }
+
+  use() {
+    var router = routersData.get(this).router;
+    return router.use.apply(router, arguments);
   }
 
   get spec() {
@@ -176,16 +190,53 @@ class Router {
   }
 
   routes() {
-    return routersData.get(this).router.routes();
+    var it = routersData.get(this);
+    this
+      .get('/spec', function*() {
+        let spec = it.spec.get();
+        if (this.query.definition) {
+          if (this.query.definition in spec.definitions) {
+            this.body = spec.definitions[this.query.definition];
+          }
+        } else {
+          this.body = spec;
+        }
+      })
+      .params({
+        in: 'query',
+        name: 'definition',
+        description: 'Fetch only the requested definition'
+      })
+      .onSuccess({
+        description: 'A swagger specification or definition'
+      });
+    return it.router.routes();
   }
 
+}
+
+function authorize(prefix, resource, method) {
+  resource = resource.replace(/\:(\w*)/g, () => '{}');
+  resource = prefix ? `/${prefix}${resource}` : `${resource}`;
+  return function*(next) {
+    let user = this.state.user;
+    assert(user, 'User not defined');
+    log('Requested authorization for', method, resource, 'to user', user);
+    if (user.admin !== true &&
+      (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
+      log('Denied');
+      this.throw(403);
+    }
+    log('Granted');
+    yield next;
+  };
 }
 
 methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
     let specMethod = it.spec.addMethod(path, method, middleware);
-    it.router[method](path, function*(next) {
+    it.router[method](path, authorize(it.prefix, path, method), function*(next) {
       try {
         yield *middleware.call(this, next);
         if (this.body !== void 0) {

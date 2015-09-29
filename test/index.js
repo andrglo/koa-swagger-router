@@ -3,6 +3,8 @@ var PgCrLayer = require('pg-cr-layer');
 var jse = require('json-schema-entity');
 var personSchema = require('./schemas/person.json');
 
+var authDb = require('auth-db');
+
 var spec = require('./spec');
 
 var pgConfig = {
@@ -26,6 +28,15 @@ function createPostgresDb() {
       'DROP DATABASE IF EXISTS "' + dbName + '";')
     .then(function() {
       return pg.execute('CREATE DATABASE "' + dbName + '"');
+    })
+    .then(function() {
+      return authDb.redis.flushdb();
+    })
+    .then(function() {
+      return authDb.roles.create({
+        name: 'any',
+        acl: ['/spec', '/person/{}', '/person']
+      });
     });
 }
 
@@ -80,5 +91,6 @@ describe('postgres', function() {
 
 after(function() {
   pgOptions.db.close();
+  authDb.redis.quit();
 });
 
