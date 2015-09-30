@@ -8,6 +8,7 @@ var util = require('util');
 var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
+var logger = process.env.NODE_ENV === 'test' ? {info() {}} : {info: console.log};
 
 var pack = require(findUp('package.json', {
   cwd: path.dirname(module.parent.filename)
@@ -43,13 +44,6 @@ var defaultSpec = {
   basePath: '/',
   host: 'localhost'
 };
-
-//var log = function() {
-//  console.log.apply(null, Array.prototype.slice.call(arguments)
-//    .map(arg => JSON.stringify(arg, null, '  ')));
-//};
-
-var log = console.log;
 
 const onSuccess = [
   {
@@ -221,13 +215,13 @@ function authorize(prefix, resource, method) {
   return function*(next) {
     let user = this.state.user;
     assert(user, 'User not defined');
-    log('Requested authorization for', method, resource, 'to user', user);
+    let log = this.state.log || logger;
     if (user.admin !== true &&
       (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
-      log('Denied');
+      log.info('Denied', method, resource, 'to user', user);
       this.throw(403);
     }
-    log('Granted');
+    log.info('Granted', method, resource, 'to', user);
     yield next;
   };
 }
