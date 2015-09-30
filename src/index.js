@@ -216,7 +216,7 @@ class Router {
 }
 
 function authorize(prefix, resource, method) {
-  resource = resource.replace(/\:(\w*)/g, () => '{}');
+  resource = resource.replace(/\:(\w*)/g, () => '*');
   resource = prefix ? `/${prefix}${resource}` : `${resource}`;
   return function*(next) {
     let user = this.state.user;
