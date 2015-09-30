@@ -2,6 +2,7 @@
 
 var assert = require('assert');
 var KoaRouter = require('koa-router');
+var parseBody = require('co-body');
 var methods = require('methods');
 var path = require('path');
 var util = require('util');
@@ -89,8 +90,14 @@ class Method {
   }
 
   params(params) {
+    this.bodyRequested = false;
     methodsData.get(this).spec.parameters = toArray(params)
-      .map(param => toSpecParam(param));
+      .map(param => {
+        if (param.in === 'body') {
+          this.bodyRequested = true;
+        }
+        return toSpecParam(param);
+      });
     return this;
   }
 
@@ -232,6 +239,9 @@ methods.forEach(function(method) {
     let specMethod = it.spec.addMethod(path, method, middleware);
     it.router[method](path, authorize(it.prefix, path, method), function*(next) {
       try {
+        if (specMethod.bodyRequested) {
+          this.state.body = yield parseBody(this);
+        }
         yield *middleware.call(this, next);
         if (this.body !== void 0) {
           let successStatus = specMethod.successStatuses();

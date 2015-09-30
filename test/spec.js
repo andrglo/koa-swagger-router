@@ -8,7 +8,6 @@ var expect = chai.expect;
 chai.should();
 var gutil = require('gulp-util');
 var parser = require('swagger-parser');
-var parseBody = require('co-body');
 
 var RouterFactory = require('../src');
 
@@ -278,8 +277,7 @@ function addStandardEntityMethods(router, name, entity) {
 
   router
     .post(`/${name}`, function*() {
-      let body = yield parseBody(this);
-      this.body = yield entity.create(body);
+      this.body = yield entity.create(this.state.body);
     })
     .params({
       in: 'body',
@@ -298,7 +296,7 @@ function addStandardEntityMethods(router, name, entity) {
 
   router
     .put(`/${name}/:${primaryKey}`, function*() {
-      let body = yield parseBody(this);
+      let body = this.state.body;
       let id = this.params[primaryKey];
       this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
     })
@@ -322,7 +320,7 @@ function addStandardEntityMethods(router, name, entity) {
 
   router
     .delete(`/${name}/:${primaryKey}`, function*() {
-      let body = yield parseBody(this);
+      let body = this.state.body;
       let id = this.params[primaryKey];
       this.body = yield entity.destroy(buildCriteria(id, body.updatedAt));
     })
