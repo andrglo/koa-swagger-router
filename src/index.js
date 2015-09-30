@@ -9,7 +9,10 @@ var util = require('util');
 var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
-var logger = process.env.NODE_ENV === 'test' ? {info() {}} : {info: console.log};
+var logger = process.env.NODE_ENV === 'test' ? {
+  info() {
+  }
+} : {info: console.log};
 
 var pack = require(findUp('package.json', {
   cwd: path.dirname(module.parent.filename)
@@ -220,15 +223,14 @@ function authorize(prefix, resource, method) {
   resource = resource.replace(/\:(\w*)/g, () => '*');
   resource = prefix ? `/${prefix}${resource}` : `${resource}`;
   return function*(next) {
-    let user = this.state.user;
-    assert(user, 'User not defined');
     let log = this.state.log || logger;
-    if (user.admin !== true &&
+    let user = this.state.user;
+    if (user && user.admin !== true &&
       (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
       log.info('Denied', method, resource, 'to user', user);
       this.throw(403);
     }
-    log.info('Granted', method, resource, 'to', user);
+    log.info('Granted', method, resource, 'to', user || '(user not defined => access allowed)');
     yield next;
   };
 }
