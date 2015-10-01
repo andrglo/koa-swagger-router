@@ -285,6 +285,7 @@ function addStandardEntityMethods(router, name, entity) {
       });
       this.body = yield entity.fetch(criteria);
     })
+    .description(`Get ${name} list`)
     .params([{
       name: 'criteria',
       description: 'Filter, order and or pagination to apply'

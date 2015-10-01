@@ -91,6 +91,11 @@ class Method {
     return this;
   }
 
+  description(description) {
+    methodsData.get(this).spec.description = description;
+    return this;
+  }
+
   params(params) {
     this.bodyRequested = false;
     methodsData.get(this).spec.parameters = toArray(params)
