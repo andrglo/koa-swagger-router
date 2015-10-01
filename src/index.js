@@ -223,7 +223,7 @@ function authorize(prefix, resource, method) {
   resource = resource.replace(/\:(\w*)/g, () => '*');
   resource = prefix ? `/${prefix}${resource}` : `${resource}`;
   return function*(next) {
-    let log = this.state.log || logger;
+    let log = this.state.logger || logger;
     let user = this.state.user;
     if (user && user.admin !== true &&
       (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
