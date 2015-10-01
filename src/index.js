@@ -45,9 +45,7 @@ var defaultSpec = {
       name: 'key',
       in: 'header'
     }
-  },
-  basePath: '/',
-  host: 'localhost'
+  }
 };
 
 const onSuccess = [
@@ -144,9 +142,12 @@ class Method {
 var specsData = new WeakMap();
 
 class Spec {
-  constructor(spec) {
+  constructor(prefix, spec) {
     let it = {};
     it.spec = Object.assign({}, defaultSpec, spec);
+    if (prefix) {
+      it.spec.basePath = `/${prefix}`;
+    }
     it.spec.paths = spec && spec.paths || {};
     it.spec.definitions = spec && spec.definitions || {};
     specsData.set(this, it);
@@ -181,7 +182,7 @@ class Router {
       prefix = void 0;
     }
     let router = new KoaRouter();
-    spec = new Spec(spec);
+    spec = new Spec(prefix, spec);
     routersData.set(this, {prefix, spec, router});
   }
 
@@ -204,6 +205,7 @@ class Router {
     this
       .get('/spec', function*() {
         let spec = yield stripNotAuthorizedActions(it.prefix, it.spec.get(), this.state.user);
+        spec.host = this.host;
         if (this.query.definition) {
           if (this.query.definition in spec.definitions) {
             this.body = spec.definitions[this.query.definition];
