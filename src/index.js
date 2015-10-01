@@ -189,6 +189,11 @@ class Router {
     return router.use.apply(router, arguments);
   }
 
+  allowedMethods() {
+    var router = routersData.get(this).router;
+    return router.allowedMethods.apply(router, arguments);
+  }
+
   get spec() {
     return routersData.get(this).spec;
   }
