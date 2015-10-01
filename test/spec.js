@@ -285,6 +285,8 @@ function addStandardEntityMethods(router, name, entity) {
       });
       this.body = yield entity.fetch(criteria);
     })
+    .description('Get a list of available modules')
+    .summary('Summary')
     .description(`Get ${name} list`)
     .params([{
       name: 'criteria',

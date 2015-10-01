@@ -91,6 +91,11 @@ class Method {
     return this;
   }
 
+  summary(summary) {
+    methodsData.get(this).spec.summary = summary;
+    return this;
+  }
+
   description(description) {
     methodsData.get(this).spec.description = description;
     return this;
