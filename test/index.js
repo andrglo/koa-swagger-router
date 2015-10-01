@@ -34,9 +34,12 @@ function createPostgresDb() {
     })
     .then(function() {
       return authDb.roles.create({
-        name: 'any',
+        name: 'admin',
         acl: ['/spec', '/person/*', '/person']
-      });
+      }).then(() => authDb.roles.create({
+        name: 'cr',
+        acl: ['/spec', '/person']
+      }));
     });
 }
 

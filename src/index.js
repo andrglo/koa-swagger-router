@@ -9,6 +9,7 @@ var util = require('util');
 var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
+var jsonRefs = require('json-refs');
 var logger = process.env.NODE_ENV === 'test' ? {
   info() {
   }
@@ -202,7 +203,7 @@ class Router {
     var it = routersData.get(this);
     this
       .get('/spec', function*() {
-        let spec = it.spec.get();
+        let spec = yield stripNotAuthorizedActions(it.prefix, it.spec.get(), this.state.user);
         if (this.query.definition) {
           if (this.query.definition in spec.definitions) {
             this.body = spec.definitions[this.query.definition];
@@ -224,9 +225,12 @@ class Router {
 
 }
 
-function authorize(prefix, resource, method) {
+function normalizeResource(prefix, resource) {
   resource = resource.replace(/\:(\w*)/g, () => '*');
-  resource = prefix ? `/${prefix}${resource}` : `${resource}`;
+  return prefix ? `/${prefix}${resource}` : `${resource}`;
+}
+
+function authorize(resource, method) {
   return function*(next) {
     let log = this.state.logger || logger;
     let user = this.state.user;
@@ -240,11 +244,50 @@ function authorize(prefix, resource, method) {
   };
 }
 
+function* stripNotAuthorizedActions(prefix, spec, user) {
+
+  let strip = function*() {
+    spec = Object.assign({}, spec);
+
+    let paths = {};
+    let pathsKeys = Object.keys(spec.paths);
+    for (let i = 0; i < pathsKeys.length; i++) {
+      let path = pathsKeys[i];
+      let methods = {};
+      let methodsKeys = Object.keys(spec.paths[path]);
+      for (let j = 0; j < methodsKeys.length; j++) {
+        let method = methodsKeys[j];
+        if (yield authDb.roles.hasPermission(user.role, normalizeResource(prefix, path), method)) {
+          methods[method] = spec.paths[path][method];
+        }
+      }
+      if (Object.keys(methods).length) {
+        paths[path] = methods;
+      }
+    }
+
+    let definitions = {};
+    var refs = jsonRefs.findRefs(paths);
+    Object.keys(refs).forEach(key => {
+      let values = jsonRefs.pathFromPointer(refs[key]);
+      let definition = values[1];
+      definitions[definition] = spec.definitions[definition];
+    });
+
+    spec.paths = paths;
+    spec.definitions = definitions;
+    return spec;
+  };
+
+  return !user || user.admin === true ? spec :
+    typeof user.role !== 'string' ? void 0 : yield strip();
+}
+
 methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
     let specMethod = it.spec.addMethod(path, method, middleware);
-    it.router[method](path, authorize(it.prefix, path, method), function*(next) {
+    it.router[method](path, authorize(normalizeResource(it.prefix, path), method), function*(next) {
       try {
         if (specMethod.bodyRequested) {
           this.state.body = yield parseBody(this);

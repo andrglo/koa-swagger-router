@@ -57,7 +57,10 @@ module.exports = function(options) {
     });
     addStandardEntityMethods(router, 'person', options.entity);
     router.use(function*(next) {
-      this.state.user = {role: this.header.role};
+      this.state.user = {
+        admin: this.header.role === 'admin',
+        role: this.header.role
+      };
       yield next;
     });
     app.use(router.routes());
@@ -76,9 +79,8 @@ module.exports = function(options) {
       agent
         .get('/spec')
         .set('Accept', 'application/json')
-        .set('role', 'any')
+        .set('role', 'admin')
         .expect(200)
-        .expect('Content-Type', /json/)
         .end(function(err, res) {
           if (err) {
             done(err);
@@ -98,12 +100,11 @@ module.exports = function(options) {
           }
         });
     });
-    it('should get the person definition', function(done) {
+    it('should get the other definition', function(done) {
       agent
-        .get('/spec?definition=person')
-        .set('role', 'any')
+        .get('/spec?definition=other')
+        .set('role', 'admin')
         .set('Accept', 'application/json')
-        .expect('Content-Type', /json/)
         .expect(200)
         .expect(function(res) {
           let definition = res.body;
@@ -111,10 +112,49 @@ module.exports = function(options) {
         })
         .end(logError(done));
     });
+    it('should have a valid swagger structure only with the allowed actions', function(done) {
+      agent
+        .get('/spec')
+        .set('Accept', 'application/json')
+        .set('role', 'cr')
+        .expect(200)
+        .end(function(err, res) {
+          if (err) {
+            done(err);
+          } else {
+            let spec = res.body;
+            parser.validate(spec, {
+              $refs: {
+                internal: false   // Don't dereference internal $refs, only external
+              }
+            }, function(err) {
+              if (err) {
+                gutil.log('Swagger specification:\n', JSON.stringify(spec, null, '  '));
+                gutil.log('Error:\n', gutil.colors.red(err));
+              } else {
+                try {
+                  expect(spec.paths['/person/{name}']).to.be.undefined;
+                } catch (e) {
+                  err = e;
+                }
+              }
+              done(err);
+            });
+          }
+        });
+    });
+    it('should not get the other definition', function(done) {
+      agent
+        .get('/spec?definition=other')
+        .set('role', 'cr')
+        .set('Accept', 'application/json')
+        .expect(404)
+        .end(logError(done));
+    });
     it('no person exists', function(done) {
       agent
         .get('/person/8')
-        .set('role', 'any')
+        .set('role', 'admin')
         .set('Accept', 'application/json')
         .expect('Content-Type', /text/)
         .expect(404)
@@ -124,7 +164,7 @@ module.exports = function(options) {
       let now = (new Date()).toISOString();
       agent
         .post('/person')
-        .set('role', 'any')
+        .set('role', 'admin')
         .set('Content-Type', 'application/json')
         .send({
           name: 'Charlie'
@@ -146,7 +186,7 @@ module.exports = function(options) {
       charlie.address = 'Victoria St';
       agent
         .put('/person/' + charlie.name)
-        .set('role', 'any')
+        .set('role', 'admin')
         .send(charlie)
         .expect(200)
         .expect('Content-Type', /json/)
@@ -160,7 +200,7 @@ module.exports = function(options) {
     it('read charlie', function(done) {
       agent
         .get('/person?name=Charlie')
-        .set('role', 'any')
+        .set('role', 'admin')
         .set('Accept', 'application/json')
         .expect('Content-Type', /json/)
         .expect(200)
@@ -177,7 +217,7 @@ module.exports = function(options) {
     it('delete charlie', function(done) {
       agent
         .delete('/person/Charlie')
-        .set('role', 'any')
+        .set('role', 'admin')
         .send(charlie)
         .set('Accept', 'application/json')
         .expect(204)
