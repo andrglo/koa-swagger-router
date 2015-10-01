@@ -94,6 +94,21 @@ module.exports = function(options) {
               if (err) {
                 gutil.log('Swagger specification:\n', JSON.stringify(spec, null, '  '));
                 gutil.log('Error:\n', gutil.colors.red(err));
+              } else {
+                try {
+                  log(spec.paths['/modules'].get.responses['200']);
+                  expect(spec.paths['/modules'].get.responses['200']).to.eql({
+                    description: 'A list of available modules',
+                    schema: {
+                      type: 'array',
+                      items: {
+                        type: 'string'
+                      }
+                    }
+                  });
+                } catch (e) {
+                  err = e;
+                }
               }
               done(err);
             });
@@ -265,6 +280,20 @@ function addStandardEntityMethods(router, name, entity) {
       });
     }
   });
+
+  router
+    .get(`/modules`, function*() {
+      this.body = ['none'];
+    })
+    .onSuccess({
+      description: 'A list of available modules',
+      schema: {
+        type: 'array',
+        items: {
+          type: 'string'
+        }
+      }
+    });
 
   router
     .get(`/${name}`, function*() {

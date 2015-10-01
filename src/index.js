@@ -370,6 +370,8 @@ function toSpecResponse(response, status) {
       $ref: `#/definitions/${response.schema}`
     };
     statusObject.name = response.name || response.schema;
+  } else if ('schema' in response) {
+    statusObject.schema = response.schema;
   }
   if (typeof response.items === 'string') {
     statusObject.schema = {
@@ -381,7 +383,7 @@ function toSpecResponse(response, status) {
     statusObject.name = response.name || response.schema;
     delete response.items;
   }
-  statusObject.description = response.description || status >= 400 ? 'Error' : 'Success';
+  statusObject.description = response.description || (status >= 400 ? 'Error' : 'Success');
   return specResponse;
 }
 
