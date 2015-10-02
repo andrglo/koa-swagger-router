@@ -15,39 +15,6 @@ var logger = process.env.NODE_ENV === 'test' ? {
   }
 } : {info: console.log};
 
-var pack = require(findUp('package.json', {
-  cwd: path.dirname(module.parent.filename)
-}));
-
-var defaultSpec = {
-  swagger: '2.0',
-  info: {
-    title: titleCase(pack.name),
-    description: pack.description,
-    version: pack.version,
-    contact: {
-      name: pack.author && pack.author.name
-    },
-    license: {
-      name: pack.private === true ? 'Proprietary' : pack.license
-    }
-  },
-  produces: [
-    'application/json',
-    'text/plain; charset=utf-8'
-  ],
-  schemes: [
-    'http'
-  ],
-  securityDefinitions: {
-    apiKey: {
-      type: 'apiKey',
-      name: 'key',
-      in: 'header'
-    }
-  }
-};
-
 const onSuccess = [
   {
     200: {
@@ -161,7 +128,47 @@ class Method {
 var specsData = new WeakMap();
 
 class Spec {
-  constructor(prefix, spec) {
+  constructor(options) {
+    options = options || {};
+
+    let spec = options.spec;
+    let prefix = options.prefix;
+    //noinspection Eslint
+    let dirname = options.__dirname;
+
+    var pack = require(findUp('package.json', {
+      cwd: dirname || path.dirname(module.parent.filename)
+    }));
+
+    var defaultSpec = {
+      swagger: '2.0',
+      info: {
+        title: titleCase(pack.name),
+        description: pack.description,
+        version: pack.version,
+        contact: {
+          name: pack.author && pack.author.name
+        },
+        license: {
+          name: pack.private === true ? 'Proprietary' : pack.license
+        }
+      },
+      produces: [
+        'application/json',
+        'text/plain; charset=utf-8'
+      ],
+      schemes: [
+        'http'
+      ],
+      securityDefinitions: {
+        apiKey: {
+          type: 'apiKey',
+          name: 'key',
+          in: 'header'
+        }
+      }
+    };
+
     let it = {};
     it.spec = Object.assign({}, defaultSpec, spec);
     if (prefix) {
@@ -195,13 +202,11 @@ var routersData = new WeakMap();
 
 class Router {
 
-  constructor(prefix, spec) {
-    if (!spec && util.isObject(prefix)) {
-      spec = prefix;
-      prefix = void 0;
-    }
+  constructor(options) {
+    options = options || {};
+    let prefix = options.prefix;
     let router = new KoaRouter();
-    spec = new Spec(prefix, spec);
+    let spec = new Spec(options);
     routersData.set(this, {prefix, spec, router});
   }
 
