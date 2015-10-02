@@ -68,6 +68,12 @@ module.exports = function(options) {
       }
       yield next;
     });
+    router.get('/public', function*() {
+      this.body = {executed: true};
+    }).grantForAll();
+    router.get('/private', function*() {
+      this.body = {executed: true};
+    });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });
@@ -241,6 +247,21 @@ module.exports = function(options) {
         .send(charlie)
         .set('Accept', 'application/json')
         .expect(204)
+        .end(logError(done));
+    });
+  });
+
+  describe('Public and private resources', function() {
+    it('should allow a request to public', function(done) {
+      agent
+        .get('/public')
+        .expect(200)
+        .end(logError(done));
+    });
+    it('should deny a request to private', function(done) {
+      agent
+        .get('/private')
+        .expect(403)
         .end(logError(done));
     });
   });

@@ -78,7 +78,6 @@ class Method {
       tags: [prefix],
       summary: titleCase(`${method} ${prefix}`),
       description: '',
-      responses: Object.assign({}, onSuccess, onError),
       responses: Object.assign({}, onSuccess[0], onError[0]),
       security: [{apiKey: []}]
     });
@@ -100,6 +99,15 @@ class Method {
   description(description) {
     methodsData.get(this).spec.description = description;
     return this;
+  }
+
+  grantForAll() {
+    delete methodsData.get(this).spec.security;
+    return this;
+  }
+
+  grantedForAll() {
+    return methodsData.get(this).spec.security === void 0;
   }
 
   params(params) {
@@ -248,11 +256,11 @@ function normalizeResource(prefix, resource) {
   return prefix ? `/${prefix}${resource}` : `${resource}`;
 }
 
-function authorize(resource, method) {
+function authorize(specMethod, resource, method) {
   return function*(next) {
     let log = this.state.logger || logger;
     let user = this.state.user;
-    if (user && user.admin !== true &&
+    if (!specMethod.grantedForAll() && user && user.admin !== true &&
       (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
       log.info('Denied', method, resource, 'to user', user);
       this.throw(403);
@@ -305,7 +313,7 @@ methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
     let specMethod = it.spec.addMethod(path, method);
-    it.router[method](path, authorize(normalizeResource(it.prefix, path), method), function*(next) {
+    it.router[method](path, authorize(specMethod, normalizeResource(it.prefix, path), method), function*(next) {
       try {
         if (specMethod.bodyRequested) {
           this.state.body = yield parseBody(this);
