@@ -299,6 +299,7 @@ methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
     let specMethod = it.spec.addMethod(path, method, middleware);
+    let specMethod = it.spec.addMethod(path, method);
     it.router[method](path, authorize(normalizeResource(it.prefix, path), method), function*(next) {
       try {
         if (specMethod.bodyRequested) {
