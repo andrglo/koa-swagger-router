@@ -79,6 +79,7 @@ class Method {
       summary: titleCase(`${method} ${prefix}`),
       description: '',
       responses: Object.assign({}, onSuccess, onError),
+      responses: Object.assign({}, onSuccess[0], onError[0]),
       security: [{apiKey: []}]
     });
 
