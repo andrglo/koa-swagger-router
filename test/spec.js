@@ -57,10 +57,15 @@ module.exports = function(options) {
     });
     addStandardEntityMethods(router, 'person', options.entity);
     router.use(function*(next) {
-      this.state.user = {
-        admin: this.header.role === 'admin',
-        role: this.header.role
-      };
+      if (this.header.role === 'sa') {
+        this.state.user = {
+          admin: true
+        };
+      } else {
+        this.state.user = {
+          role: this.header.role
+        };
+      }
       yield next;
     });
     app.use(router.routes());
@@ -79,7 +84,7 @@ module.exports = function(options) {
       agent
         .get('/spec')
         .set('Accept', 'application/json')
-        .set('role', 'admin')
+        .set('role', 'sa')
         .expect(200)
         .end(function(err, res) {
           if (err) {
@@ -118,7 +123,7 @@ module.exports = function(options) {
     it('should get the other definition', function(done) {
       agent
         .get('/spec?definition=other')
-        .set('role', 'admin')
+        .set('role', 'sa')
         .set('Accept', 'application/json')
         .expect(200)
         .expect(function(res) {
