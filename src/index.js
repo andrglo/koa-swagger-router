@@ -196,6 +196,11 @@ class Router {
     routersData.set(this, {prefix, spec, router});
   }
 
+  param() {
+    var router = routersData.get(this).router;
+    return router.param.apply(router, arguments);
+  }
+
   use() {
     var router = routersData.get(this).router;
     return router.use.apply(router, arguments);
@@ -298,7 +303,6 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
 methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
-    let specMethod = it.spec.addMethod(path, method, middleware);
     let specMethod = it.spec.addMethod(path, method);
     it.router[method](path, authorize(normalizeResource(it.prefix, path), method), function*(next) {
       try {
