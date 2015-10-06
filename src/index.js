@@ -120,7 +120,7 @@ class Method {
     var data = methodsData.get(this);
     return data.onError.map(response => ({
       status: Number(Object.keys(response)[0]),
-      name: response.name
+      name: response[Object.keys(response)[0]].name
     }));
   }
 }

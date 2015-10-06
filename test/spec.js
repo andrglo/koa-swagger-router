@@ -2,6 +2,7 @@
 
 var koa = require('koa');
 var request = require('supertest');
+var assert = require('assert');
 var http = require('http');
 var chai = require('chai');
 var expect = chai.expect;
@@ -74,6 +75,17 @@ module.exports = function(options) {
     router.get('/private', function*() {
       this.body = {executed: true};
     });
+    router.get('/error400', function*() {
+      assert(false, 'assertion');
+    }).onError({
+      schema: 'AssertionError'
+    });
+    router.get('/error410', function*() {
+      assert(false, 'assertion');
+    }).onError({
+      schema: 'AssertionError',
+      status: 410
+    });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });
@@ -107,7 +119,6 @@ module.exports = function(options) {
                 gutil.log('Error:\n', gutil.colors.red(err));
               } else {
                 try {
-                  log(spec.paths['/modules'].get.responses['200']);
                   expect(spec.paths['/modules'].get.responses['200']).to.eql({
                     description: 'A list of available modules',
                     schema: {
@@ -262,6 +273,23 @@ module.exports = function(options) {
       agent
         .get('/private')
         .expect(403)
+        .end(logError(done));
+    });
+  });
+
+  describe('Error status handling', function() {
+    it('Should return a 400 error', function(done) {
+      agent
+        .get('/error400')
+        .set('role', 'sa')
+        .expect(400)
+        .end(logError(done));
+    });
+    it('Should return a 410 error', function(done) {
+      agent
+        .get('/error410')
+        .set('role', 'sa')
+        .expect(410)
         .end(logError(done));
     });
   });
