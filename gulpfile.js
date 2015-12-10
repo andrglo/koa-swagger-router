@@ -15,8 +15,7 @@ gulp.task('static', function() {
 });
 
 gulp.task('nsp', function(cb) {
-  //nsp('package.json', cb); // timeout error
-  cb();
+  nsp({package: path.join(__dirname, 'package.json')}, cb);
 });
 
 gulp.task('pre-test', function() {

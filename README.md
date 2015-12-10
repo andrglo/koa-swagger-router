@@ -14,7 +14,7 @@ $ npm install --save koa-swagger-router
 ```js
 var koaSwaggerRouter = require('koa-swagger-router');
 
-koaSwaggerRouter('Rainbow');
+// todo
 ```
 
 ## License
