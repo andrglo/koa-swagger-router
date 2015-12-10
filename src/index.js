@@ -5,7 +5,6 @@ var KoaRouter = require('koa-router');
 var parseBody = require('co-body');
 var methods = require('methods');
 var path = require('path');
-var util = require('util');
 var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
@@ -133,8 +132,10 @@ class Spec {
 
     let spec = options.spec;
     let prefix = options.prefix;
-    //noinspection Eslint
+
+    /*eslint-disable*/
     let dirname = options.__dirname;
+    /*eslint-enable*/
 
     var pack = require(findUp('package.json', {
       cwd: dirname || path.dirname(module.parent.filename)
@@ -266,7 +267,7 @@ function authorize(specMethod, resource, method) {
     let log = this.state.logger || logger;
     let user = this.state.user;
     if (!specMethod.grantedForAll() && user && user.admin !== true &&
-      (!user.role || !(yield authDb.roles.hasPermission(user.role, resource, method)))) {
+      (!user.roles || !(yield authDb.roles.hasPermission(user.roles, resource, method)))) {
       log.info('Denied', method, resource, 'to user', user);
       this.throw(403);
     }
@@ -288,7 +289,7 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
       let methodsKeys = Object.keys(spec.paths[path]);
       for (let j = 0; j < methodsKeys.length; j++) {
         let method = methodsKeys[j];
-        if (yield authDb.roles.hasPermission(user.role, normalizeResource(prefix, path), method)) {
+        if (yield authDb.roles.hasPermission(user.roles, normalizeResource(prefix, path), method)) {
           methods[method] = spec.paths[path][method];
         }
       }
@@ -311,7 +312,7 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
   };
 
   return !user || user.admin === true ? spec :
-    typeof user.role !== 'string' ? void 0 : yield strip();
+    user.roles ? yield strip() : void 0;
 }
 
 methods.forEach(function(method) {

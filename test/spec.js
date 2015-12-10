@@ -64,7 +64,7 @@ module.exports = function(options) {
         };
       } else {
         this.state.user = {
-          role: this.header.role
+          roles: [this.header.role]
         };
       }
       yield next;
