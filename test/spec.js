@@ -84,7 +84,8 @@ module.exports = function(options) {
       assert(false, 'assertion');
     }).onError({
       schema: 'AssertionError',
-      status: 410
+      status: 410,
+      show: (e) => ({message: 'message is ' + e.message})
     });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
@@ -290,6 +291,10 @@ module.exports = function(options) {
         .get('/error410')
         .set('role', 'sa')
         .expect(410)
+        .expect(function(res) {
+          //console.log('410', res)
+          expect(res.body.message).to.equal('message is assertion');
+        })
         .end(logError(done));
     });
   });

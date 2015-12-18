@@ -119,7 +119,8 @@ class Method {
     var data = methodsData.get(this);
     return data.onError.map(response => ({
       status: Number(Object.keys(response)[0]),
-      name: response[Object.keys(response)[0]].name
+      name: response[Object.keys(response)[0]].name,
+      show: response[Object.keys(response)[0]].show
     }));
   }
 }
@@ -332,16 +333,14 @@ methods.forEach(function(method) {
           }
         }
       } catch (e) {
+        this.status = 500;
         let errors = specMethod.errors();
         errors.forEach(error => {
           if (e.name === error.name) {
-            e.status = error.status;
+            this.status = error.status;
+            this.body = error.show(e);
           }
         });
-        this.status = e.status || 500;
-        if (this.status < 500) {
-          this.body = e;
-        }
         this.app.emit('error', e, this);
       }
     });
@@ -404,6 +403,9 @@ function toSpecResponse(response, status) {
     delete response.items;
   }
   statusObject.description = response.description || (status >= 400 ? 'Error' : 'Success');
+  if (status >= 400) {
+    statusObject.show = response.show || (error => ({message: error.message}));
+  }
   return specResponse;
 }
 
