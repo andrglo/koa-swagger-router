@@ -99,7 +99,22 @@ module.exports = function(options) {
         .expect(403)
         .end(logError(done));
     });
-    it('should have a valid swagger structure', function(done) {
+    it('should have a valid swagger structure in getter', function(done) {
+      let spec = router.spec.get();
+      parser.validate(spec, {
+        $refs: {
+          internal: false   // Don't dereference internal $refs, only external
+        }
+      }, function(err) {
+        if (err) {
+          gutil.log('Swagger getter specification:\n', spec);
+          gutil.log('Error:\n', gutil.colors.red(err));
+        } else {
+          done(err);
+        }
+      });
+    });
+    it('should have a valid swagger structure in request', function(done) {
       agent
         .get('/spec')
         .set('Accept', 'application/json')
@@ -292,7 +307,6 @@ module.exports = function(options) {
         .set('role', 'sa')
         .expect(410)
         .expect(function(res) {
-          //console.log('410', res)
           expect(res.body.message).to.equal('message is assertion');
         })
         .end(logError(done));
@@ -316,16 +330,26 @@ function addStandardEntityMethods(router, name, entity) {
 
   let schema = entity.schema.get();
   router.spec.addDefinition(name, schema);
-  router.spec.addDefinition('EntityError', { //todo
+  router.spec.addDefinition('DatabaseError', {
     properties: {
       name: {
+        type: 'string'
+      },
+      message: {
+        type: 'string'
+      },
+      details: {
         type: 'array',
         items: {
-          type: 'string',
-          description: 'none'
+          type: 'string'
         }
       }
     }
+  });
+  let show = error => ({
+    name: 'DatabaseError',
+    message: error.message,
+    details: []
   });
 
   let queryColumns = [];
@@ -384,7 +408,9 @@ function addStandardEntityMethods(router, name, entity) {
       items: name
     })
     .onError({
-      schema: 'EntityError'
+      schema: 'DatabaseError',
+      catch: ['EntityError', 'RequestError'],
+      show
     });
 
   router

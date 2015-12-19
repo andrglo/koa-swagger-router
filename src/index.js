@@ -95,7 +95,7 @@ class Method {
       .forEach(response => data.onSuccess.push(toSpecResponse(response, 200)));
     data.spec.responses = Object.assign({},
       data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
-      data.onError.reduce((result, response) => Object.assign(result, response)), {});
+      data.onError.reduce((result, response) => Object.assign(result, response), {}));
     return this;
   }
 
@@ -106,7 +106,7 @@ class Method {
       .forEach(response => data.onError.push(toSpecResponse(response, 400)));
     data.spec.responses = Object.assign({},
       data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
-      data.onError.reduce((result, response) => Object.assign(result, response)), {});
+      data.onError.reduce((result, response) => Object.assign(result, response), {}));
     return this;
   }
 
@@ -120,7 +120,8 @@ class Method {
     return data.onError.map(response => ({
       status: Number(Object.keys(response)[0]),
       name: response[Object.keys(response)[0]].name,
-      show: response[Object.keys(response)[0]].show
+      show: response[Object.keys(response)[0]].show,
+      catch: response[Object.keys(response)[0]].catch
     }));
   }
 }
@@ -336,7 +337,7 @@ methods.forEach(function(method) {
         this.status = 500;
         let errors = specMethod.errors();
         errors.forEach(error => {
-          if (e.name === error.name) {
+          if (error.catch.indexOf(e.name) !== -1) {
             this.status = error.status;
             this.body = error.show(e);
           }
@@ -404,7 +405,12 @@ function toSpecResponse(response, status) {
   }
   statusObject.description = response.description || (status >= 400 ? 'Error' : 'Success');
   if (status >= 400) {
-    statusObject.show = response.show || (error => ({message: error.message}));
+    Object.defineProperty(statusObject, 'show', {
+      value: response.show || (error => ({message: error.message}))
+    });
+    Object.defineProperty(statusObject, 'catch', {
+      value: response.catch || [statusObject.name]
+    });
   }
   return specResponse;
 }
