@@ -1,6 +1,6 @@
 {
   "name": "koa-swagger-router",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A koa router that builds a full swagger specification",
   "homepage": "",
   "repository": "andrglo/koa-swagger-router",
