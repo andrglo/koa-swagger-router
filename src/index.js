@@ -337,10 +337,12 @@ methods.forEach(function(method) {
         this.status = 500;
         let errors = specMethod.errors();
         errors.forEach(error => {
-          if (error.catch.indexOf(e.name) !== -1) {
-            this.status = error.status;
-            this.body = error.show(e);
-          }
+          error.catch.forEach(fn => {
+            if (typeof fn === 'string' ? fn === e.name : fn(e)) {
+              this.status = error.status;
+              this.body = error.show(e);
+            }
+          });
         });
         this.app.emit('error', e, this);
       }
