@@ -78,12 +78,19 @@ module.exports = function(options) {
     router.get('/error400', function*() {
       assert(false, 'assertion');
     }).onError({
-      schema: 'AssertionError'
+      name: 'AssertionError'
     });
     router.get('/error410', function*() {
       assert(false, 'assertion');
     }).onError({
-      schema: 'AssertionError',
+      name: 'AssertionError',
+      schema: {
+        properties: {
+          name: {
+            type: 'string'
+          }
+        }
+      },
       status: 410,
       show: (e) => ({message: 'message is ' + e.message})
     });
@@ -110,6 +117,7 @@ module.exports = function(options) {
           gutil.log('Swagger getter specification:\n', spec);
           gutil.log('Error:\n', gutil.colors.red(err));
         } else {
+          expect(spec.definitions.AssertionError).to.exist;
           done(err);
         }
       });
@@ -408,7 +416,7 @@ function addStandardEntityMethods(router, name, entity) {
       items: name
     })
     .onError({
-      schema: 'DatabaseError',
+      name: 'DatabaseError',
       catch: ['EntityError', 'RequestError'],
       show
     });
@@ -444,7 +452,7 @@ function addStandardEntityMethods(router, name, entity) {
       schema: name
     })
     .onSuccess({
-      schema: name,
+      name,
       status: 201
     })
     .onError({

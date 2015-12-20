@@ -33,7 +33,7 @@ const onError = [
 var methodsData = new WeakMap();
 
 class Method {
-  constructor(spec, path, method) {
+  constructor(spec, path, method, parent) {
 
     var match = path.match(/^\/(\w*)\/?/);
     let prefix;
@@ -48,7 +48,7 @@ class Method {
       security: [{apiKey: []}]
     });
 
-    methodsData.set(this, {spec, onSuccess, onError});
+    methodsData.set(this, {spec, onSuccess, onError, parent});
 
   }
 
@@ -92,7 +92,7 @@ class Method {
     var data = methodsData.get(this);
     data.onSuccess = [];
     toArray(response)
-      .forEach(response => data.onSuccess.push(toSpecResponse(response, 200)));
+      .forEach(response => data.onSuccess.push(toSpecResponse(data.parent, response, 200)));
     data.spec.responses = Object.assign({},
       data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
       data.onError.reduce((result, response) => Object.assign(result, response), {}));
@@ -103,7 +103,7 @@ class Method {
     var data = methodsData.get(this);
     data.onError = [];
     toArray(response)
-      .forEach(response => data.onError.push(toSpecResponse(response, 400)));
+      .forEach(response => data.onError.push(toSpecResponse(data.parent, response, 400)));
     data.spec.responses = Object.assign({},
       data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
       data.onError.reduce((result, response) => Object.assign(result, response), {}));
@@ -192,7 +192,7 @@ class Spec {
     path = path.replace(/\:(\w*)/g, (match, name) => `{${name}}`);
     it.spec.paths[path] = it.spec.paths[path] || {};
     assert(it.spec.paths[path][method] === void 0, `Method ${method} already defined for path ${path}`);
-    return new Method(it.spec.paths[path][method] = {}, path, method);
+    return new Method(it.spec.paths[path][method] = {}, path, method, this);
   }
 
   get() {
@@ -378,7 +378,7 @@ function toSpecParam(param) {
   return specParam;
 }
 
-function toSpecResponse(response, status) {
+function toSpecResponse(spec, response, status) {
   let specResponse = {};
   let statusObject = specResponse[response.status || status] = {};
   Object.defineProperty(statusObject, 'name', {
@@ -391,7 +391,14 @@ function toSpecResponse(response, status) {
     };
     statusObject.name = response.name || response.schema;
   } else if ('schema' in response) {
-    statusObject.schema = response.schema;
+    if (response.name) {
+      spec.addDefinition(response.name, response.schema);
+      statusObject.schema = {
+        $ref: `#/definitions/${response.name}`
+      };
+    } else {
+      statusObject.schema = response.schema;
+    }
   }
   if (typeof response.items === 'string') {
     statusObject.schema = {
