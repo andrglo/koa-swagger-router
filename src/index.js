@@ -121,7 +121,7 @@ class Method {
       status: Number(Object.keys(response)[0]),
       name: response[Object.keys(response)[0]].name,
       show: response[Object.keys(response)[0]].show,
-      catch: response[Object.keys(response)[0]].catch
+      catch: response[Object.keys(response)[0]].catch || []
     }));
   }
 }
@@ -232,17 +232,25 @@ class Router {
     return routersData.get(this).spec;
   }
 
-  routes() {
+  *userSpec(user, host, definition) {
     var it = routersData.get(this);
+    let spec = yield stripNotAuthorizedActions(it.prefix, it.spec.get(), user);
+    spec.host = host;
+    if (definition) {
+      if (definition in spec.definitions) {
+        return spec.definitions[definition];
+      }
+    } else {
+      return spec;
+    }
+  }
+
+  routes() {
+    var self = this;
     this
       .get('/spec', function*() {
-        let spec = yield stripNotAuthorizedActions(it.prefix, it.spec.get(), this.state.user);
-        spec.host = this.host;
-        if (this.query.definition) {
-          if (this.query.definition in spec.definitions) {
-            this.body = spec.definitions[this.query.definition];
-          }
-        } else {
+        let spec = yield self.userSpec(this.state.user, this.host, this.query.definition);
+        if (spec) {
           this.body = spec;
         }
       })
@@ -254,7 +262,7 @@ class Router {
       .onSuccess({
         description: 'A swagger specification or definition'
       });
-    return it.router.routes();
+    return routersData.get(this).router.routes();
   }
 
 }
@@ -291,7 +299,14 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
       let methodsKeys = Object.keys(spec.paths[path]);
       for (let j = 0; j < methodsKeys.length; j++) {
         let method = methodsKeys[j];
-        if (yield authDb.roles.hasPermission(user.roles, normalizeResource(prefix, path), method)) {
+        if (!user) {
+          if (!spec.paths[path][method].security) {
+            methods[method] = spec.paths[path][method];
+          } else if (path === '/spec') {
+            methods[method] = Object.assign({}, spec.paths[path][method]);
+            delete methods[method].security;
+          }
+        } else if (yield authDb.roles.hasPermission(user.roles, normalizeResource(prefix, path), method)) {
           methods[method] = spec.paths[path][method];
         }
       }
@@ -310,11 +325,13 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
 
     spec.paths = paths;
     spec.definitions = definitions;
+    if (!user) {
+      delete spec.securityDefinitions;
+    }
     return spec;
   };
 
-  return !user || user.admin === true ? spec :
-    user.roles ? yield strip() : void 0;
+  return user && user.admin === true ? spec : yield strip();
 }
 
 methods.forEach(function(method) {
