@@ -4,6 +4,7 @@ var assert = require('assert');
 var KoaRouter = require('koa-router');
 var parseBody = require('co-body');
 var methods = require('methods');
+var extend = require('deep-extend');
 var path = require('path');
 var authDb = require('auth-db');
 var findUp = require('findup-sync');
@@ -143,7 +144,8 @@ class Spec {
       cwd: dirname || path.dirname(module.parent.filename)
     }));
 
-    var defaultSpec = {
+    let it = {};
+    it.spec = extend({
       swagger: '2.0',
       info: {
         title: titleCase(pack.name),
@@ -171,10 +173,7 @@ class Spec {
           in: 'header'
         }
       }
-    };
-
-    let it = {};
-    it.spec = Object.assign({}, defaultSpec, spec);
+    }, spec);
     if (prefix) {
       it.spec.basePath = `/${prefix}`;
     }
