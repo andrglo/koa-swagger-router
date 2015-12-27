@@ -134,7 +134,6 @@ class Spec {
     options = options || {};
 
     let spec = options.spec;
-    let prefix = options.prefix;
 
     /*eslint-disable*/
     let dirname = options.__dirname;
@@ -174,13 +173,15 @@ class Spec {
         }
       }
     }, spec);
-    if (prefix) {
-      it.spec.basePath = `/${prefix}`;
-    }
 
     it.spec.paths = spec && spec.paths || {};
     it.spec.definitions = spec && spec.definitions || {};
     specsData.set(this, it);
+  }
+
+  setBasePath(basePath) {
+    let it = specsData.get(this);
+    it.spec.basePath = basePath;
   }
 
   addDefinition(name, definition) {
