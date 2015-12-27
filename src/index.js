@@ -45,7 +45,7 @@ class Method {
       summary: titleCase(`${method} ${prefix}`),
       description: '',
       responses: Object.assign({}, onSuccess[0], onError[0]),
-      security: [{apiKey: []}]
+      security: [{internalApiKey: []}]
     });
 
     methodsData.set(this, {spec, onSuccess, onError, parent});
@@ -161,12 +161,13 @@ class Spec {
         'text/plain; charset=utf-8'
       ],
       schemes: [
-        'http'
+        'https'
       ],
+      security: [{internalApiKey: []}],
       securityDefinitions: {
-        apiKey: {
+        internalApiKey: {
           type: 'apiKey',
-          name: 'key',
+          name: 'api_key',
           in: 'header'
         }
       }
@@ -177,6 +178,7 @@ class Spec {
     if (prefix) {
       it.spec.basePath = `/${prefix}`;
     }
+
     it.spec.paths = spec && spec.paths || {};
     it.spec.definitions = spec && spec.definitions || {};
     specsData.set(this, it);
