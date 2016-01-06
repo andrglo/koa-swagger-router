@@ -11,9 +11,11 @@ var findUp = require('findup-sync');
 var titleCase = require('title-case');
 var jsonRefs = require('json-refs');
 var logger = process.env.NODE_ENV === 'test' ? {
-  info() {
+  trace() {
+  },
+  warn() {
   }
-} : {info: console.log};
+} : {trace: console.log, warn: console.log};
 
 const onSuccess = [
   {
@@ -280,10 +282,10 @@ function authorize(specMethod, resource, method) {
     let user = this.state.user;
     if (!specMethod.grantedForAll() && user && user.admin !== true &&
       (!user.roles || !(yield authDb.roles.hasPermission(user.roles, resource, method)))) {
-      log.info('Denied', method, resource, 'to user', user);
+      log.warn('Denied', method, resource, 'to user', user.username);
       this.throw(403);
     }
-    log.info('Granted', method, resource, 'to', user || '(user not defined => access allowed)');
+    log.trace('Granted', method, resource, 'to', user && user.username || '(user not defined => access allowed)');
     yield next;
   };
 }
