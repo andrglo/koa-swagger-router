@@ -34,7 +34,7 @@ module.exports = function(options) {
   var router;
   before(function() {
     var app = koa();
-    router = new RouterFactory();
+    router = new RouterFactory(options.authDb);
     router.spec.addDefinition('other', {
       myProperty: 'invalid swagger',
       properties: {
@@ -67,6 +67,7 @@ module.exports = function(options) {
           roles: [this.header.role]
         };
       }
+      this.state.db = options.db;
       yield next;
     });
     router.get('/public', function*() {
@@ -403,7 +404,7 @@ function addStandardEntityMethods(router, name, entity) {
           criteria.where[column.name] = value;
         }
       });
-      this.body = yield entity.fetch(criteria);
+      this.body = yield entity.new(this.state.db).fetch(criteria);
     })
     .description('Get a list of available modules')
     .summary('Summary')
@@ -423,7 +424,7 @@ function addStandardEntityMethods(router, name, entity) {
 
   router
     .get(`/${name}/:${primaryKey}`, function*() {
-      let recordset = yield entity.fetch(buildCriteria(this.params[primaryKey]));
+      let recordset = yield entity.new(this.state.db).fetch(buildCriteria(this.params[primaryKey]));
       if (recordset.length) {
         this.body = recordset[0];
       }
@@ -442,7 +443,7 @@ function addStandardEntityMethods(router, name, entity) {
 
   router
     .post(`/${name}`, function*() {
-      this.body = yield entity.create(this.state.body);
+      this.body = yield entity.new(this.state.db).create(this.state.body);
     })
     .params({
       in: 'body',
@@ -463,7 +464,7 @@ function addStandardEntityMethods(router, name, entity) {
     .put(`/${name}/:${primaryKey}`, function*() {
       let body = this.state.body;
       let id = this.params[primaryKey];
-      this.body = yield entity.update(body, buildCriteria(id, body.updatedAt));
+      this.body = yield entity.new(this.state.db).update(body, buildCriteria(id, body.updatedAt));
     })
     .params([{
       in: 'path',
@@ -487,7 +488,7 @@ function addStandardEntityMethods(router, name, entity) {
     .delete(`/${name}/:${primaryKey}`, function*() {
       let body = this.state.body;
       let id = this.params[primaryKey];
-      this.body = yield entity.destroy(buildCriteria(id, body.updatedAt));
+      this.body = yield entity.new(this.state.db).destroy(buildCriteria(id, body.updatedAt));
     })
     .params([{
       in: 'path',

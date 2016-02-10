@@ -1,11 +1,18 @@
 var gutil = require('gulp-util');
+var Redis = require('ioredis');
 var PgCrLayer = require('pg-cr-layer');
 var jse = require('json-schema-entity');
 var personSchema = require('./schemas/person.json');
 
-var authDb = require('auth-db');
-
 var spec = require('./spec');
+
+const redis = new Redis({
+  port: process.env.REDIS_PORT || 6379,
+  host: process.env.REDIS_HOST || '127.0.0.1',
+  db: process.env.REDIS_DATABASE || 0
+});
+const authDb = require('auth-db')(redis);
+
 
 var pgConfig = {
   user: process.env.POSTGRES_USER || 'postgres',
@@ -30,7 +37,7 @@ function createPostgresDb() {
       return pg.execute('CREATE DATABASE "' + dbName + '"');
     })
     .then(function() {
-      return authDb.redis.flushdb();
+      return redis.flushdb();
     })
     .then(function() {
       return authDb.roles.create({
@@ -43,7 +50,7 @@ function createPostgresDb() {
     });
 }
 
-var pgOptions = {};
+var pgOptions = {authDb};
 
 before(function(done) {
   return pg.connect()
@@ -61,15 +68,15 @@ before(function(done) {
           return pgOptions.db.connect();
         })
         .then(function() {
-          pgOptions.entity = jse('person', personSchema, {db: pgOptions.db});
+          pgOptions.entity = jse('person', personSchema);
           pgOptions.entity.useTimestamps();
           pgOptions.entity
-            .hasMany('person as children', personSchema, {db: pgOptions.db})
+            .hasMany('person as children', personSchema)
             .foreignKey('fkChildren');
           pgOptions.entity
-            .hasOne('person as parent', personSchema, {db: pgOptions.db})
+            .hasOne('person as parent', personSchema)
             .foreignKey('fkParent');
-          return pgOptions.entity.createTables();
+          return pgOptions.entity.new(pgOptions.db).createTables();
         });
     })
     .then(function() {
@@ -94,6 +101,6 @@ describe('postgres', function() {
 
 after(function() {
   pgOptions.db.close();
-  authDb.redis.quit();
+  redis.quit();
 });
 

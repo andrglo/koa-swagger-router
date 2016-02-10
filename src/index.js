@@ -6,7 +6,6 @@ var parseBody = require('co-body');
 var methods = require('methods');
 var extend = require('deep-extend');
 var path = require('path');
-var authDb = require('auth-db');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
 var jsonRefs = require('json-refs');
@@ -209,12 +208,12 @@ var routersData = new WeakMap();
 
 class Router {
 
-  constructor(options) {
+  constructor(authDb, options) {
     options = options || {};
     let prefix = options.prefix;
     let router = new KoaRouter();
     let spec = new Spec(options);
-    routersData.set(this, {prefix, spec, router});
+    routersData.set(this, {authDb, prefix, spec, router});
   }
 
   param() {
@@ -238,7 +237,7 @@ class Router {
 
   *userSpec(user, host, definition) {
     var it = routersData.get(this);
-    let spec = yield stripNotAuthorizedActions(it.prefix, it.spec.get(), user);
+    let spec = yield stripNotAuthorizedActions(it.authDb, it.prefix, it.spec.get(), user);
     spec.host = host;
     if (definition) {
       if (definition in spec.definitions) {
@@ -276,7 +275,7 @@ function normalizeResource(prefix, resource) {
   return prefix ? `/${prefix}${resource}` : `${resource}`;
 }
 
-function authorize(specMethod, resource, method) {
+function authorize(authDb, specMethod, resource, method) {
   return function*(next) {
     let log = this.state.logger || logger;
     let user = this.state.user;
@@ -290,7 +289,7 @@ function authorize(specMethod, resource, method) {
   };
 }
 
-function* stripNotAuthorizedActions(prefix, spec, user) {
+function* stripNotAuthorizedActions(authDb, prefix, spec, user) {
 
   let strip = function*() {
     spec = Object.assign({}, spec);
@@ -322,7 +321,7 @@ function* stripNotAuthorizedActions(prefix, spec, user) {
     let definitions = {};
     var refs = jsonRefs.findRefs(paths);
     Object.keys(refs).forEach(key => {
-      let values = jsonRefs.pathFromPointer(refs[key]);
+      let values = jsonRefs.pathFromPtr(key);
       let definition = values[1];
       definitions[definition] = spec.definitions[definition];
     });
@@ -342,7 +341,7 @@ methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
     let specMethod = it.spec.addMethod(path, method);
-    it.router[method](path, authorize(specMethod, normalizeResource(it.prefix, path), method), function*(next) {
+    it.router[method](path, authorize(it.authDb, specMethod, normalizeResource(it.prefix, path), method), function*(next) {
       try {
         if (specMethod.bodyRequested) {
           this.state.body = yield parseBody(this);
