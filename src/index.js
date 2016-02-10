@@ -321,7 +321,7 @@ function* stripNotAuthorizedActions(authDb, prefix, spec, user) {
     let definitions = {};
     var refs = jsonRefs.findRefs(paths);
     Object.keys(refs).forEach(key => {
-      let values = jsonRefs.pathFromPtr(key);
+      let values = jsonRefs.pathFromPtr(refs[key].uri);
       let definition = values[1];
       definitions[definition] = spec.definitions[definition];
     });
