@@ -354,7 +354,7 @@ methods.forEach(function(method) {
           }
         }
       } catch (e) {
-        this.status = 500;
+        this.status = e.status || 500;
         let errors = specMethod.errors();
         errors.forEach(error => {
           error.catch.forEach(fn => {
