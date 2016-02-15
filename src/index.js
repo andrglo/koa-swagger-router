@@ -68,7 +68,7 @@ class Method {
     return this;
   }
 
-  spec() {
+  get spec() {
     return methodsData.get(this).spec;
   }
 
@@ -229,21 +229,25 @@ class Router {
     return routersData.get(this).spec;
   }
 
-  routes() {
+  userSpec() {
     const it = routersData.get(this);
-    this
-      .get('/spec', function*() {
-        let spec = yield stripNotAuthorizedActions.call(this, it.prefix, it.spec.get());
-        spec.host = this.host;
-        const definition = this.query.definition;
-        if (definition) {
-          if (definition in spec.definitions) {
-            this.body = spec.definitions[definition];
-          }
-        } else {
-          this.body = spec;
+    return function*() {
+      let spec = yield stripNotAuthorizedActions.call(this, it.prefix, it.spec.get());
+      spec.host = this.host;
+      const definition = this.query.definition;
+      if (definition) {
+        if (definition in spec.definitions) {
+          this.body = spec.definitions[definition];
         }
-      })
+      } else {
+        this.body = spec;
+      }
+    };
+  }
+
+  routes() {
+    this
+      .get('/spec', this.userSpec())
       .params({
         in: 'query',
         name: 'definition',
@@ -252,7 +256,7 @@ class Router {
       .onSuccess({
         description: 'A swagger specification or definition'
       });
-    return it.router.routes();
+    return routersData.get(this).router.routes();
   }
 
 }
@@ -310,7 +314,7 @@ methods.forEach(function(method) {
     let it = routersData.get(this);
     let thisMethod = it.spec.addMethod(path, method);
     const normalizedResource = normalizeResource(it.prefix, path);
-    const thisMethodSpec = thisMethod.spec();
+    const thisMethodSpec = thisMethod.spec;
     it.router[method](path, function*(next) {
       try {
         if (this.state.authorize) {
