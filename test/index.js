@@ -1,18 +1,9 @@
 var gutil = require('gulp-util');
-var Redis = require('ioredis');
 var PgCrLayer = require('pg-cr-layer');
 var jse = require('json-schema-entity');
 var personSchema = require('./schemas/person.json');
 
 var spec = require('./spec');
-
-const redis = new Redis({
-  port: process.env.REDIS_PORT || 6379,
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  db: process.env.REDIS_DATABASE || 0
-});
-const authDb = require('auth-db')(redis);
-
 
 var pgConfig = {
   user: process.env.POSTGRES_USER || 'postgres',
@@ -35,22 +26,10 @@ function createPostgresDb() {
       'DROP DATABASE IF EXISTS "' + dbName + '";')
     .then(function() {
       return pg.execute('CREATE DATABASE "' + dbName + '"');
-    })
-    .then(function() {
-      return redis.flushdb();
-    })
-    .then(function() {
-      return authDb.roles.create({
-        name: 'admin',
-        acl: ['/spec', '/person/*', '/person']
-      }).then(() => authDb.roles.create({
-        name: 'cr',
-        acl: ['/spec', '/person']
-      }));
     });
 }
 
-var pgOptions = {authDb};
+var pgOptions = {};
 
 before(function(done) {
   return pg.connect()
@@ -101,6 +80,5 @@ describe('postgres', function() {
 
 after(function() {
   pgOptions.db.close();
-  redis.quit();
 });
 

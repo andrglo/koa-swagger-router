@@ -58,7 +58,7 @@ module.exports = function(options) {
     });
     addStandardEntityMethods(router, 'person', options.entity);
     router.use(function*(next) {
-      if (this.header.role === 'sa') {
+      if (this.header.role === 'sa' || this.header.role === 'admin') {
         this.state.user = {
           admin: true
         };
@@ -68,18 +68,30 @@ module.exports = function(options) {
         };
       }
       this.state.db = options.db;
+
+      this.state.authorize = function*(method, resource, spec) {
+        if (resource === '/spec' || spec.security && spec.security.length === 0) {
+          return; // has access
+        }
+        let user = this.state.user;
+        if (user.admin !== true) {
+          this.throw(403);
+        }
+      };
+
       yield next;
     });
     router.get('/public', function*() {
-      this.body = {executed: true};
-    }).grantForAll();
+      this.body = { executed: true };
+    }).security([]); // => none
     router.get('/private', function*() {
-      this.body = {executed: true};
+      this.body = { executed: true };
     });
     router.get('/error400', function*() {
       assert(false, 'assertion');
     }).onError({
-      name: 'AssertionError'
+      name: 'AssertionError',
+      schema: 'other'
     });
     router.get('/error410', function*() {
       assert(false, 'assertion');
@@ -93,7 +105,7 @@ module.exports = function(options) {
         }
       },
       status: 410,
-      show: (e) => ({message: 'message is ' + e.message})
+      show: (e) => ({ message: 'message is ' + e.message })
     });
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
@@ -101,10 +113,17 @@ module.exports = function(options) {
 
   describe('resource', function() {
     var charlie;
-    it('should deny a request to the spec', function(done) {
+    it('should always allow a request to the spec', function(done) {
       agent
         .get('/spec')
-        .expect(403)
+        .expect(200)
+        .expect(function(res) {
+          let spec = res.body;
+          spec.should.have.property('paths');
+          spec.paths.should.have.property('/public');
+          spec.paths.should.have.property('/spec');
+          spec.paths.should.not.have.property('/private');
+        })
         .end(logError(done));
     });
     it('should have a valid swagger structure in getter', function(done) {
@@ -329,7 +348,7 @@ function addStandardEntityMethods(router, name, entity) {
   var primaryKey = entity.schema.primaryKey()[0];
 
   function buildCriteria(key, updatedAt) {
-    let criteria = {where: {}};
+    let criteria = { where: {} };
     criteria.where[primaryKey] = key;
     if (updatedAt !== void 0) {
       criteria.where.updatedAt = updatedAt;

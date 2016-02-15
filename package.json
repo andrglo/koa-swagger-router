@@ -19,16 +19,14 @@
     "router"
   ],
   "devDependencies": {
-    "auth-db": "^2.0.1",
     "chai": "^3.5.0",
     "gulp": "^3.9.1",
     "gulp-coveralls": "^0.1.4",
-    "gulp-eslint": "^1.1.1",
+    "gulp-eslint": "^2.0.0",
     "gulp-istanbul": "^0.10.3",
     "gulp-mocha": "^2.2.0",
     "gulp-nsp": "^2.3.0",
     "gulp-util": "^3.0.7",
-    "ioredis": "^1.15.0",
     "json-schema-entity": "^2.0.2",
     "koa": "^1.1.2",
     "pg-cr-layer": "^1.0.3",

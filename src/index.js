@@ -9,12 +9,6 @@ var path = require('path');
 var findUp = require('findup-sync');
 var titleCase = require('title-case');
 var jsonRefs = require('json-refs');
-var logger = process.env.NODE_ENV === 'test' ? {
-  trace() {
-  },
-  warn() {
-  }
-} : {trace: console.log, warn: console.log};
 
 const onSuccess = [
   {
@@ -47,10 +41,10 @@ class Method {
       summary: titleCase(`${method} ${prefix}`),
       description: '',
       responses: Object.assign({}, onSuccess[0], onError[0]),
-      security: [{internalApiKey: []}]
+      security: [{ internalApiKey: [] }]
     });
 
-    methodsData.set(this, {spec, onSuccess, onError, parent});
+    methodsData.set(this, { spec, onSuccess, onError, parent });
 
   }
 
@@ -69,13 +63,13 @@ class Method {
     return this;
   }
 
-  grantForAll() {
-    delete methodsData.get(this).spec.security;
+  security(value) {
+    methodsData.get(this).spec.security = value;
     return this;
   }
 
-  grantedForAll() {
-    return methodsData.get(this).spec.security === void 0;
+  spec() {
+    return methodsData.get(this).spec;
   }
 
   params(params) {
@@ -165,7 +159,7 @@ class Spec {
       schemes: [
         'https'
       ],
-      security: [{internalApiKey: []}],
+      security: [{ internalApiKey: [] }],
       securityDefinitions: {
         internalApiKey: {
           type: 'apiKey',
@@ -208,12 +202,12 @@ var routersData = new WeakMap();
 
 class Router {
 
-  constructor(authDb, options) {
+  constructor(options) {
     options = options || {};
     let prefix = options.prefix;
     let router = new KoaRouter();
     let spec = new Spec(options);
-    routersData.set(this, {authDb, prefix, spec, router});
+    routersData.set(this, { prefix, spec, router });
   }
 
   param() {
@@ -235,25 +229,18 @@ class Router {
     return routersData.get(this).spec;
   }
 
-  *userSpec(user, host, definition) {
-    var it = routersData.get(this);
-    let spec = yield stripNotAuthorizedActions(it.authDb, it.prefix, it.spec.get(), user);
-    spec.host = host;
-    if (definition) {
-      if (definition in spec.definitions) {
-        return spec.definitions[definition];
-      }
-    } else {
-      return spec;
-    }
-  }
-
   routes() {
-    var self = this;
+    const it = routersData.get(this);
     this
       .get('/spec', function*() {
-        let spec = yield self.userSpec(this.state.user, this.host, this.query.definition);
-        if (spec) {
+        let spec = yield stripNotAuthorizedActions.call(this, it.prefix, it.spec.get());
+        spec.host = this.host;
+        const definition = this.query.definition;
+        if (definition) {
+          if (definition in spec.definitions) {
+            this.body = spec.definitions[definition];
+          }
+        } else {
           this.body = spec;
         }
       })
@@ -265,7 +252,7 @@ class Router {
       .onSuccess({
         description: 'A swagger specification or definition'
       });
-    return routersData.get(this).router.routes();
+    return it.router.routes();
   }
 
 }
@@ -275,21 +262,7 @@ function normalizeResource(prefix, resource) {
   return prefix ? `/${prefix}${resource}` : `${resource}`;
 }
 
-function authorize(authDb, specMethod, resource, method) {
-  return function*(next) {
-    let log = this.state.logger || logger;
-    let user = this.state.user;
-    if (!specMethod.grantedForAll() && user && user.admin !== true &&
-      (!user.roles || !(yield authDb.roles.hasPermission(user.roles, resource, method)))) {
-      log.warn('Denied', method, resource, 'to user', user.username);
-      this.throw(403);
-    }
-    log.trace('Granted', method, resource, 'to', user && user.username || '(user not defined => access allowed)');
-    yield next;
-  };
-}
-
-function* stripNotAuthorizedActions(authDb, prefix, spec, user) {
+function* stripNotAuthorizedActions(prefix, spec) {
 
   let strip = function*() {
     spec = Object.assign({}, spec);
@@ -302,15 +275,13 @@ function* stripNotAuthorizedActions(authDb, prefix, spec, user) {
       let methodsKeys = Object.keys(spec.paths[path]);
       for (let j = 0; j < methodsKeys.length; j++) {
         let method = methodsKeys[j];
-        if (!user) {
-          if (!spec.paths[path][method].security) {
-            methods[method] = spec.paths[path][method];
-          } else if (path === '/spec') {
-            methods[method] = Object.assign({}, spec.paths[path][method]);
-            delete methods[method].security;
-          }
-        } else if (yield authDb.roles.hasPermission(user.roles, normalizeResource(prefix, path), method)) {
+        try {
+          yield this.state.authorize.call(this, method, normalizeResource(prefix, path), spec.paths[path][method]);
           methods[method] = spec.paths[path][method];
+        } catch (error) {
+          if (error.status !== 403) {
+            throw error;
+          }
         }
       }
       if (Object.keys(methods).length) {
@@ -328,34 +299,36 @@ function* stripNotAuthorizedActions(authDb, prefix, spec, user) {
 
     spec.paths = paths;
     spec.definitions = definitions;
-    if (!user) {
-      delete spec.securityDefinitions;
-    }
     return spec;
-  };
+  }.bind(this);
 
-  return user && user.admin === true ? spec : yield strip();
+  return !this.state.authorize ? spec : yield strip();
 }
 
 methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
     let it = routersData.get(this);
-    let specMethod = it.spec.addMethod(path, method);
-    it.router[method](path, authorize(it.authDb, specMethod, normalizeResource(it.prefix, path), method), function*(next) {
+    let thisMethod = it.spec.addMethod(path, method);
+    const normalizedResource = normalizeResource(it.prefix, path);
+    const thisMethodSpec = thisMethod.spec();
+    it.router[method](path, function*(next) {
       try {
-        if (specMethod.bodyRequested) {
+        if (this.state.authorize) {
+          yield this.state.authorize.call(this, method, normalizedResource, thisMethodSpec);
+        }
+        if (thisMethod.bodyRequested) {
           this.state.body = yield parseBody(this);
         }
         yield *middleware.call(this, next);
         if (this.body !== void 0) {
-          let successStatus = specMethod.successStatuses();
+          let successStatus = thisMethod.successStatuses();
           if (successStatus.indexOf(this.status) === -1) {
             this.status = successStatus[0];
           }
         }
       } catch (e) {
         this.status = e.status || 500;
-        let errors = specMethod.errors();
+        let errors = thisMethod.errors();
         errors.forEach(error => {
           error.catch.forEach(fn => {
             if (typeof fn === 'string' ? fn === e.name : fn(e)) {
@@ -367,7 +340,7 @@ methods.forEach(function(method) {
         this.app.emit('error', e, this);
       }
     });
-    return specMethod;
+    return thisMethod;
   };
 });
 
@@ -435,7 +408,7 @@ function toSpecResponse(spec, response, status) {
   statusObject.description = response.description || (status >= 400 ? 'Error' : 'Success');
   if (status >= 400) {
     Object.defineProperty(statusObject, 'show', {
-      value: response.show || (error => ({message: error.message}))
+      value: response.show || (error => ({ message: error.message }))
     });
     Object.defineProperty(statusObject, 'catch', {
       value: response.catch || [statusObject.name]
