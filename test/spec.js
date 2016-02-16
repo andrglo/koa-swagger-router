@@ -95,7 +95,7 @@ module.exports = function(options) {
     });
     router.get('/error410', function*() {
       assert(false, 'assertion');
-    }).onError({
+    }).onError([{
       name: 'AssertionError',
       schema: {
         properties: {
@@ -106,7 +106,18 @@ module.exports = function(options) {
       },
       status: 410,
       show: (e) => ({ message: 'message is ' + e.message })
-    });
+    }, {
+      name: 'AssertionError',
+      schema: {
+        properties: {
+          name: {
+            type: 'string'
+          }
+        }
+      },
+      status: 400,
+      show: (e) => ({ message: 'message is ' + e.message })
+    }]);
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
   });

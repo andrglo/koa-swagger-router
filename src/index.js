@@ -333,11 +333,13 @@ methods.forEach(function(method) {
       } catch (e) {
         this.status = e.status || 500;
         let errors = thisMethod.errors();
+        let caught = false;
         errors.forEach(error => {
           error.catch.forEach(fn => {
-            if (typeof fn === 'string' ? fn === e.name : fn(e)) {
+            if (!caught && (typeof fn === 'string' ? fn === e.name : fn(e))) {
               this.status = error.status;
               this.body = error.show(e);
+              caught = true;
             }
           });
         });
