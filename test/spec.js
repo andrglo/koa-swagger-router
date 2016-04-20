@@ -105,7 +105,7 @@ module.exports = function(options) {
         }
       },
       status: 410,
-      show: (e) => ({ message: 'message is ' + e.message })
+      show: (e, ctx) => ({ message: 'message is ' + e.message + (ctx.state ? '' : 'error')})
     }, {
       name: 'AssertionError',
       schema: {

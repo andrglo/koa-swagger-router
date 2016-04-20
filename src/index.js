@@ -338,7 +338,7 @@ methods.forEach(function(method) {
           error.catch.forEach(fn => {
             if (!caught && (typeof fn === 'string' ? fn === e.name : fn(e))) {
               this.status = error.status;
-              this.body = error.show(e);
+              this.body = error.show(e, this);
               caught = true;
             }
           });
