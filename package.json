@@ -23,15 +23,15 @@
     "gulp": "^3.9.1",
     "gulp-coveralls": "^0.1.4",
     "gulp-eslint": "^2.0.0",
-    "gulp-istanbul": "^0.10.3",
+    "gulp-istanbul": "^0.10.4",
     "gulp-mocha": "^2.2.0",
-    "gulp-nsp": "^2.3.0",
+    "gulp-nsp": "^2.4.0",
     "gulp-util": "^3.0.7",
     "json-schema-entity": "^2.0.2",
-    "koa": "^1.1.2",
+    "koa": "^1.2.0",
     "pg-cr-layer": "^1.0.3",
     "supertest": "^1.2.0",
-    "swagger-parser": "^3.4.0"
+    "swagger-parser": "^3.4.1"
   },
   "scripts": {
     "prepublish": "gulp prepublish",
@@ -41,7 +41,7 @@
   "dependencies": {
     "co-body": "^4.0.0",
     "deep-extend": "^0.4.1",
-    "findup-sync": "^0.3.0",
+    "findup-sync": "^0.4.0",
     "json-refs": "^2.1.5",
     "koa-router": "^5.4.0",
     "methods": "^1.1.2",
