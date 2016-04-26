@@ -159,7 +159,6 @@ class Spec {
       schemes: [
         'https'
       ],
-      security: [{ internalApiKey: [] }],
       securityDefinitions: {
         internalApiKey: {
           type: 'apiKey',
