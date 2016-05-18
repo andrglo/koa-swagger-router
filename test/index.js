@@ -7,7 +7,7 @@ var spec = require('./spec');
 
 var pgConfig = {
   user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD,
+  password: process.env.POSTGRES_PASSWORD || 'postgres',
   database: 'postgres',
   host: process.env.POSTGRES_HOST || 'localhost',
   port: process.env.POSTGRES_PORT || 5432,
