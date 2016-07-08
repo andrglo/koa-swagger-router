@@ -2,6 +2,7 @@
 
 var assert = require('assert');
 var KoaRouter = require('koa-router');
+var co = require('@ayk/co');
 var parseBody = require('co-body');
 var methods = require('methods');
 var extend = require('deep-extend');
@@ -322,7 +323,7 @@ methods.forEach(function(method) {
         if (thisMethod.bodyRequested) {
           this.state.body = yield parseBody(this);
         }
-        yield *middleware.call(this, next);
+        yield co(middleware.call(this, this, this.state, next));
         if (this.body !== void 0) {
           let successStatus = thisMethod.successStatuses();
           if (successStatus.indexOf(this.status) === -1) {

@@ -5,6 +5,7 @@ var request = require('supertest');
 var assert = require('assert');
 var http = require('http');
 var chai = require('chai');
+var co = require('@ayk/co');
 var expect = chai.expect;
 chai.should();
 var gutil = require('gulp-util');
@@ -27,6 +28,11 @@ function log() {
   console.log.apply(null, Array.prototype.slice.call(arguments)
     .map(arg => JSON.stringify(arg, null, '  ')));
 }
+
+const effect = (o) => Promise.resolve(o);
+const pubRoute = function*(ctx, { allCaughtUp }) {
+  ctx.body = { executed: yield co.effect(effect, allCaughtUp) };
+};
 
 module.exports = function(options) {
 
@@ -68,6 +74,7 @@ module.exports = function(options) {
         };
       }
       this.state.db = options.db;
+      this.state.allCaughtUp = true;
 
       this.state.authorize = function*(method, resource, spec) {
         if (resource === '/spec' || spec.security && spec.security.length === 0) {
@@ -81,9 +88,7 @@ module.exports = function(options) {
 
       yield next;
     });
-    router.get('/public', function*() {
-      this.body = { executed: true };
-    }).security([]); // => none
+    router.get('/public', pubRoute).security([]); // => none
     router.get('/private', function*() {
       this.body = { executed: true };
     });
@@ -120,6 +125,17 @@ module.exports = function(options) {
     }]);
     app.use(router.routes());
     agent = request(http.createServer(app.callback()));
+  });
+
+  describe('effects', function() {
+    it('do a unit test of the route', function() {
+      const gen = pubRoute({}, { allCaughtUp: false });
+      let value = gen.next();
+      expect(value.value).to.eql(co.effect(effect, false));
+      value = gen.next(false);
+      expect(value.value).to.be.undefined;
+      expect(value.done).to.be.true;
+    });
   });
 
   describe('resource', function() {
