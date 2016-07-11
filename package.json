@@ -39,10 +39,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@ayk/co": "^4.6.0",
+    "@ayk/co": "^4.6.2",
     "co-body": "^4.2.0",
     "deep-extend": "^0.4.1",
-    "findup-sync": "^0.4.1",
+    "findup-sync": "^0.4.2",
     "json-refs": "^2.1.6",
     "koa-router": "^5.4.0",
     "methods": "^1.1.2",
