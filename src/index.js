@@ -42,10 +42,10 @@ class Method {
       summary: titleCase(`${method} ${prefix}`),
       description: '',
       responses: Object.assign({}, onSuccess[0], onError[0]),
-      security: [{ internalApiKey: [] }]
+      security: [{internalApiKey: []}]
     });
 
-    methodsData.set(this, { spec, onSuccess, onError, parent });
+    methodsData.set(this, {spec, onSuccess, onError, parent});
 
   }
 
@@ -207,7 +207,7 @@ class Router {
     let prefix = options.prefix;
     let router = new KoaRouter();
     let spec = new Spec(options);
-    routersData.set(this, { prefix, spec, router });
+    routersData.set(this, {prefix, spec, router});
   }
 
   param() {
@@ -280,7 +280,12 @@ function* stripNotAuthorizedActions(prefix, spec) {
       for (let j = 0; j < methodsKeys.length; j++) {
         let method = methodsKeys[j];
         try {
-          yield this.state.authorize.call(this, method, normalizeResource(prefix, path), spec.paths[path][method]);
+          const request = {
+            method,
+            resource: normalizeResource(prefix, path),
+            spec: spec.paths[path][method]
+          };
+          yield this.state.authorize.call(this, this, this.state, request);
           methods[method] = spec.paths[path][method];
         } catch (error) {
           if (error.status !== 403) {
@@ -318,7 +323,12 @@ methods.forEach(function(method) {
     it.router[method](path, function*(next) {
       try {
         if (this.state.authorize) {
-          yield this.state.authorize.call(this, method, normalizedResource, thisMethodSpec);
+          const request = {
+            method,
+            resource: normalizedResource,
+            spec: thisMethodSpec
+          };
+          yield this.state.authorize.call(this, this, this.state, request);
         }
         if (thisMethod.bodyRequested) {
           this.state.body = yield parseBody(this);
@@ -414,7 +424,7 @@ function toSpecResponse(spec, response, status) {
   statusObject.description = response.description || (status >= 400 ? 'Error' : 'Success');
   if (status >= 400) {
     Object.defineProperty(statusObject, 'show', {
-      value: response.show || (error => ({ message: error.message }))
+      value: response.show || (error => ({message: error.message}))
     });
     Object.defineProperty(statusObject, 'catch', {
       value: response.catch || [statusObject.name]
