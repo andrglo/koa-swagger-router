@@ -283,7 +283,8 @@ function* stripNotAuthorizedActions(prefix, spec) {
           const request = {
             method,
             resource: normalizeResource(prefix, path),
-            spec: spec.paths[path][method]
+            spec: spec.paths[path][method],
+            checkOnly: true
           };
           yield this.state.authorize.call(this, this, this.state, request);
           methods[method] = spec.paths[path][method];
