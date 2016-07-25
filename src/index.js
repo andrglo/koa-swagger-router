@@ -347,7 +347,7 @@ methods.forEach(function(method) {
         let caught = false;
         errors.forEach(error => {
           error.catch.forEach(fn => {
-            if (!caught && (typeof fn === 'string' ? fn === e.name : fn(e))) {
+            if (!caught && (typeof fn === 'string' ? fn === e.name : fn && fn(e))) {
               this.status = error.status;
               this.body = error.show(e, this);
               caught = true;
