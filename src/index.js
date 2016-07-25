@@ -236,9 +236,9 @@ class Router {
       spec.host = this.host;
       const definition = this.query.definition;
       if (definition) {
-        if (definition in spec.definitions) {
-          this.body = spec.definitions[definition];
-        }
+        this.body = definition in spec.definitions ?
+          spec.definitions[definition] :
+          undefined;
       } else {
         this.body = spec;
       }
