@@ -354,6 +354,9 @@ methods.forEach(function(method) {
             }
           });
         });
+        if (!caught && this.status !== 500) {
+          this.body = {message: e.message};
+        }
         this.app.emit('error', e, this);
       }
     });
