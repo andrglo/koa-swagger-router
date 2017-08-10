@@ -31,7 +31,7 @@ function createPostgresDb() {
 
 var pgOptions = {};
 
-before(function(done) {
+before(function() {
   return pg.connect()
     .then(function() {
       return createPostgresDb()
@@ -58,12 +58,6 @@ before(function(done) {
           return pgOptions.entity.new(pgOptions.db).createTables();
         });
     })
-    .then(function() {
-      done();
-    })
-    .catch(function(error) {
-      done(error);
-    });
 });
 
 describe('postgres', function() {

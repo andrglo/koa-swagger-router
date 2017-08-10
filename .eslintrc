@@ -1,4 +1,7 @@
 {
+  "parserOptions": {
+    "ecmaVersion": 8
+  },
   "rules": {
     "strict": [
       0,
@@ -7,13 +10,6 @@
     "quotes": [
       2,
       "single"
-    ],
-    "indent": [
-      2,
-      2,
-      {
-        "SwitchCase": 1
-      }
     ],
     "one-var": [
       2,
@@ -29,6 +25,13 @@
       {
         "anonymous": "never",
         "named": "never"
+      }
+    ],
+    "generator-star-spacing": [
+      "error",
+      {
+        "before": true,
+        "after": false
       }
     ],
     "keyword-spacing": [
@@ -167,14 +170,14 @@
         "after": true
       }
     ],
-    "semi": 1
+    "semi": [
+      "error",
+      "never"
+    ]
   },
   "env": {
     "node": true,
     "mocha": true,
     "es6": true
-  },
-  "ecmaFeatures": {
-    "modules": true
   }
 }
