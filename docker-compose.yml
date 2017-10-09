@@ -1,0 +1,26 @@
+version: '2'
+
+services:
+
+  dms:
+    image: andrglo/everest
+    hostname: koa-swagger-router
+    command: tail -f /dev/null
+    working_dir: /andrglo/koa-swagger-router
+    volumes:
+      - ./docker_fish_history:/root/.config/fish/fish_history
+      - .:/andrglo/koa-swagger-router
+    environment:
+      - NODE_ENV=development
+      - NPM_TOKEN=$NPM_TOKEN
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+    restart: always
+
+  postgres:
+    image: andrglo/postgres:9.6-2
+    restart: always
+
+

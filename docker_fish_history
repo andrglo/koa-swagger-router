@@ -1,0 +1,5 @@
+- cmd: yarn upgrade-interactive
+   when: 1470615608
+- cmd: yarn test
+   when: 1470615608
+

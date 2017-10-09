@@ -28,8 +28,8 @@ function log() {
 }
 
 const effect = (o) => Promise.resolve(o)
-const pubRoute = function *(ctx, {allCaughtUp}) {
-  ctx.body = {executed: yield co.effect(effect, allCaughtUp)}
+const pubRoute = async (ctx, {allCaughtUp}) => {
+  ctx.body = {executed: await effect(allCaughtUp)}
 }
 
 module.exports = function(options) {
@@ -60,7 +60,6 @@ module.exports = function(options) {
         }
       }
     })
-    addStandardEntityMethods(router, 'person', options.entity)
     router.use(
       async (ctx, next) => {
         if (ctx.header.role === 'sa' || ctx.header.role === 'admin') {
@@ -75,7 +74,7 @@ module.exports = function(options) {
         ctx.state.db = options.db
         ctx.state.allCaughtUp = true
 
-        ctx.state.authorize = async function(method, resource, spec) {
+        ctx.state.authorize = async function(ctx, state, {resource, spec}) {
           if (resource === '/spec'
               || spec.security && spec.security.length === 0) {
             return // has access
@@ -88,6 +87,7 @@ module.exports = function(options) {
         await next()
       }
     )
+    addStandardEntityMethods(router, 'person', options.entity)
     router.get('/public', pubRoute).security([]) // => none
     router.get('/private', ctx => co(function *() {
       this.body = {executed: true}
@@ -129,17 +129,6 @@ module.exports = function(options) {
     agent = request(http.createServer(app.callback()))
   })
 
-  describe('effects', function() {
-    it('do a unit test of the route', function() {
-      const gen = pubRoute({}, {allCaughtUp: false})
-      let value = gen.next()
-      expect(value.value).to.eql(co.effect(effect, false))
-      value = gen.next(false)
-      expect(value.value).to.be.undefined
-      expect(value.done).to.be.true
-    })
-  })
-
   describe('resource', function() {
     var charlie
     it('should always allow a request to the spec', function(done) {
@@ -159,7 +148,7 @@ module.exports = function(options) {
       let spec = router.spec.get()
       parser.validate(spec, {
         $refs: {
-          internal: false   // Don't dereference internal $refs, only external
+          internal: false // Don't dereference internal $refs, only external
         }
       }, function(err) {
         if (err) {
@@ -184,7 +173,7 @@ module.exports = function(options) {
             let spec = res.body
             parser.validate(spec, {
               $refs: {
-                internal: false   // Don't dereference internal $refs, only external
+                internal: false // Don't dereference internal $refs, only external
               }
             }, function(err) {
               if (err) {
@@ -235,7 +224,7 @@ module.exports = function(options) {
             let spec = res.body
             parser.validate(spec, {
               $refs: {
-                internal: false   // Don't dereference internal $refs, only external
+                internal: false // Don't dereference internal $refs, only external
               }
             }, function(err) {
               if (err) {
@@ -258,7 +247,7 @@ module.exports = function(options) {
         .get('/spec?definition=other')
         .set('role', 'cr')
         .set('Accept', 'application/json')
-        .expect(404)
+        .expect(204)
         .end(logError(done))
     })
     it('no person exists', function(done) {
@@ -288,7 +277,7 @@ module.exports = function(options) {
           record.should.have.property('updatedAt')
           record.createdAt.should.equal(record.updatedAt)
           expect(record.createdAt).to.be.a('string')
-          expect(record.createdAt).to.above(now)
+          expect(record.createdAt >= now).equal(true)
         })
         .end(logError(done))
     })
@@ -374,7 +363,7 @@ module.exports = function(options) {
 
 function addStandardEntityMethods(router, name, entity) {
 
-  var primaryKey = entity.schema.primaryKey()[0]
+  const primaryKey = entity.schema.primaryKey()[0]
 
   function buildCriteria(key, updatedAt) {
     let criteria = {where: {}}
@@ -422,8 +411,8 @@ function addStandardEntityMethods(router, name, entity) {
   })
 
   router
-    .get(`/modules`, function *() {
-      this.body = ['none']
+    .get('/modules', async ctx => {
+      ctx.body = ['none']
     })
     .onSuccess({
       description: 'A list of available modules',
@@ -436,8 +425,8 @@ function addStandardEntityMethods(router, name, entity) {
     })
 
   router
-    .get(`/${name}`, function *() {
-      let criteria = this.query.criteria
+    .get(`/${name}`, async ctx => {
+      let criteria = ctx.query.criteria
       if (criteria) {
         criteria = JSON.parse(criteria)
         criteria.where = criteria.where || {}
@@ -447,12 +436,12 @@ function addStandardEntityMethods(router, name, entity) {
         }
       }
       queryColumns.forEach(column => {
-        let value = this.query[column.name]
+        let value = ctx.query[column.name]
         if (value) {
           criteria.where[column.name] = value
         }
       })
-      this.body = yield entity.new(this.state.db).fetch(criteria)
+      ctx.body = await entity.new(ctx.state.db).fetch(criteria)
     })
     .description('Get a list of available modules')
     .summary('Summary')
@@ -471,10 +460,11 @@ function addStandardEntityMethods(router, name, entity) {
     })
 
   router
-    .get(`/${name}/:${primaryKey}`, function *() {
-      let recordset = yield entity.new(this.state.db).fetch(buildCriteria(this.params[primaryKey]))
+    .get(`/${name}/:${primaryKey}`, async ctx => {
+      let recordset = await entity.new(ctx.state.db)
+        .fetch(buildCriteria(ctx.params[primaryKey]))
       if (recordset.length) {
-        this.body = recordset[0]
+        ctx.body = recordset[0]
       }
     })
     .params({
@@ -490,8 +480,8 @@ function addStandardEntityMethods(router, name, entity) {
     })
 
   router
-    .post(`/${name}`, function *() {
-      this.body = yield entity.new(this.state.db).create(this.state.body)
+    .post(`/${name}`, async ctx => {
+      ctx.body = await entity.new(ctx.state.db).create(ctx.state.body)
     })
     .params({
       in: 'body',
@@ -509,10 +499,14 @@ function addStandardEntityMethods(router, name, entity) {
     })
 
   router
-    .put(`/${name}/:${primaryKey}`, function *() {
-      let body = this.state.body
-      let id = this.params[primaryKey]
-      this.body = yield entity.new(this.state.db).update(body, buildCriteria(id, body.updatedAt))
+    .put(`/${name}/:${primaryKey}`, async ctx => {
+      let body = ctx.state.body
+      let id = ctx.params[primaryKey]
+      ctx.body = await entity.new(ctx.state.db)
+        .update(
+          body,
+          buildCriteria(id, body.updatedAt)
+        )
     })
     .params([{
       in: 'path',
@@ -533,10 +527,10 @@ function addStandardEntityMethods(router, name, entity) {
     })
 
   router
-    .delete(`/${name}/:${primaryKey}`, function *() {
-      let body = this.state.body
-      let id = this.params[primaryKey]
-      this.body = yield entity.new(this.state.db).destroy(buildCriteria(id, body.updatedAt))
+    .delete(`/${name}/:${primaryKey}`, async ctx => {
+      let body = ctx.state.body
+      let id = ctx.params[primaryKey]
+      ctx.body = await entity.new(ctx.state.db).destroy(buildCriteria(id, body.updatedAt))
     })
     .params([{
       in: 'path',

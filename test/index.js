@@ -6,11 +6,11 @@ var personSchema = require('./schemas/person.json');
 var spec = require('./spec');
 
 var pgConfig = {
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD || 'postgres',
   database: 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: process.env.POSTGRES_PORT || 5432,
+  host: process.env.PGHOST || 'localhost',
+  port: process.env.PGPORT || 5432,
   pool: {
     max: 10,
     idleTimeout: 30000
@@ -21,7 +21,7 @@ var pg = new PgCrLayer(pgConfig);
 var databaseName = 'test-koa-swagger-router';
 
 function createPostgresDb() {
-  var dbName = process.env.POSTGRES_DATABASE || databaseName;
+  var dbName = process.env.PGDATABASE || databaseName;
   return pg.execute(
       'DROP DATABASE IF EXISTS "' + dbName + '";')
     .then(function() {
