@@ -1,6 +1,7 @@
 node_modules
 coverage
 .idea
+.history
 
 
 yarn-error.log

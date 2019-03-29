@@ -3,7 +3,7 @@ version: '2'
 services:
 
   dms:
-    image: andrglo/everest
+    image: andrglo/everest:10.15.3
     hostname: koa-swagger-router
     command: tail -f /dev/null
     working_dir: /andrglo/koa-swagger-router
@@ -20,7 +20,7 @@ services:
     restart: always
 
   postgres:
-    image: andrglo/postgres:9.6-2
+    image: andrglo/postgres:10
     restart: always
 
 

@@ -1,6 +1,6 @@
 {
   "name": "koa-swagger-router",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "A koa router that builds a full swagger specification",
   "homepage": "",
   "repository": "andrglo/koa-swagger-router",
@@ -19,31 +19,30 @@
     "router"
   ],
   "devDependencies": {
-    "chai": "^4.1.1",
+    "chai": "^4.2.0",
     "gulp": "^3.9.1",
     "gulp-eslint": "4.0.0",
     "gulp-mocha": "4.3.1",
     "gulp-nsp": "^2.4.1",
     "gulp-util": "^3.0.8",
-    "json-schema-entity": "^6.0.4",
-    "koa": "^2.3.0",
-    "pg-cr-layer": "^2.0.2",
+    "json-schema-entity": "^6.1.2",
+    "koa": "^2.7.0",
+    "pg-cr-layer": "^2.0.5",
     "supertest": "^3.0.0",
-    "swagger-parser": "^3.4.2"
+    "swagger-parser": "^6.0.5"
   },
   "scripts": {
-    "prepublish": "gulp prepublish",
-    "ssh": "docker exec -it koaswaggerrouter_dms_1 fish",
+    "ssh": "docker exec -it koa-swagger-router_dms_1 fish",
     "test": "gulp"
   },
   "license": "MIT",
   "dependencies": {
     "@ayk/co": "^4.6.2",
-    "co-body": "^5.1.1",
-    "deep-extend": "^0.5.0",
-    "findup-sync": "^2.0.0",
-    "json-refs": "^3.0.0",
-    "koa-router": "^7.2.1",
+    "co-body": "^6.0.0",
+    "deep-extend": "^0.6.0",
+    "findup-sync": "^3.0.0",
+    "json-refs": "^3.0.12",
+    "koa-router": "^7.4.0",
     "methods": "^1.1.2",
     "title-case": "^2.1.1"
   }

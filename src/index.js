@@ -355,7 +355,7 @@ methods.forEach(function(method) {
           await ctx.state.authorize(ctx, ctx.state, request)
         }
         if (thisMethod.bodyRequested) {
-          ctx.state.body = await parseBody(ctx)
+          ctx.state.body = await parseBody(ctx, {limit: '5mb'})
         }
 
         if (generator) {
