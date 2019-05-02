@@ -1,4 +1,4 @@
-# koa-swagger-router [![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url]
+# koa-swagger-router [![NPM version][npm-image]][npm-url] [![Dependency Status][daviddm-image]][daviddm-url] [![CircleCI](https://circleci.com/gh/andrglo/koa-swagger-router.svg?style=svg)](https://circleci.com/gh/andrglo/koa-swagger-router) [![Coverage Status](https://coveralls.io/repos/github/andrglo/koa-swagger-router/badge.svg?branch=master)](https://coveralls.io/github/andrglo/koa-swagger-router?branch=master)
 > A koa router that builds a full swagger specification
 
 
