@@ -2,12 +2,10 @@
   "name": "koa-swagger-router",
   "version": "5.0.1",
   "description": "A koa router that builds a full swagger specification",
-  "homepage": "",
-  "repository": "andrglo/koa-swagger-router",
+  "repository": "https://github.com/andrglo/koa-swagger-router.git",
   "author": {
     "name": "Andre Gloria",
-    "email": "andredagloria@gmail.com",
-    "url": "andrglo.com"
+    "email": "andredagloria@gmail.com"
   },
   "files": [
     "src"
@@ -20,28 +18,29 @@
   ],
   "devDependencies": {
     "chai": "^4.2.0",
-    "gulp": "^3.9.1",
-    "gulp-eslint": "4.0.0",
-    "gulp-mocha": "4.3.1",
-    "gulp-nsp": "^2.4.1",
-    "gulp-util": "^3.0.8",
-    "json-schema-entity": "^6.1.2",
+    "coveralls": "^3.0.3",
+    "eslint": "^5.16.0",
+    "eslint-config-google": "^0.12.0",
+    "json-schema-entity": "^6.1.7",
     "koa": "^2.7.0",
-    "pg-cr-layer": "^2.0.5",
-    "supertest": "^3.0.0",
+    "mocha": "^6.1.4",
+    "nyc": "^14.0.0",
+    "pg-cr-layer": "^2.0.6",
+    "supertest": "^4.0.2",
     "swagger-parser": "^6.0.5"
   },
   "scripts": {
-    "ssh": "docker exec -it koa-swagger-router_dms_1 fish",
-    "test": "gulp"
+    "test": "nyc mocha --bail --exit --timeout 15000 test/index.js",
+    "test:report:coverage": "nyc report --reporter=text-lcov | coveralls",
+    "ssh": "docker exec -it koa-swagger-router_dms_1 fish"
   },
   "license": "MIT",
   "dependencies": {
-    "@ayk/co": "^4.6.2",
+    "co": "^4.6.0",
     "co-body": "^6.0.0",
     "deep-extend": "^0.6.0",
     "findup-sync": "^3.0.0",
-    "json-refs": "^3.0.12",
+    "json-refs": "3.0.12",
     "koa-router": "^7.4.0",
     "methods": "^1.1.2",
     "title-case": "^2.1.1"
