@@ -9,16 +9,18 @@ const findUp = require('findup-sync')
 const titleCase = require('title-case')
 const jsonRefs = require('json-refs')
 
-const isGenerator =
-  obj => typeof obj.next === 'function' && typeof obj.throw === 'function'
+const isGenerator = obj =>
+  typeof obj.next === 'function' && typeof obj.throw === 'function'
 
 const isGeneratorFunction = obj => {
   const constructor = obj.constructor
   if (!constructor) {
     return false
   }
-  if (constructor.name === 'GeneratorFunction'
-      || constructor.displayName === 'GeneratorFunction') {
+  if (
+    constructor.name === 'GeneratorFunction' ||
+    constructor.displayName === 'GeneratorFunction'
+  ) {
     return true
   }
   return isGenerator(constructor.prototype)
@@ -44,11 +46,12 @@ const methodsData = new WeakMap()
 
 class Method {
   constructor(spec, path, method, parent) {
-
     const match = path.match(/^\/(\w*)\/?/)
     let prefix
-    assert(match && (prefix = match[1]),
-      `Path ${path} should be int format /path or /path/anything`)
+    assert(
+        match && (prefix = match[1]),
+        `Path ${path} should be int format /path or /path/anything`
+    )
 
     Object.assign(spec, {
       tags: [prefix],
@@ -59,7 +62,6 @@ class Method {
     })
 
     methodsData.set(this, {spec, onSuccess, onError, parent})
-
   }
 
   tags(tags) {
@@ -88,35 +90,52 @@ class Method {
 
   params(params) {
     this.bodyRequested = false
-    methodsData.get(this).spec.parameters = toArray(params)
-      .map(param => {
-        if (param.in === 'body') {
-          this.bodyRequested = true
-        }
-        return toSpecParam(param)
-      })
+    methodsData.get(this).spec.parameters = toArray(params).map(param => {
+      if (param.in === 'body') {
+        this.bodyRequested = true
+      }
+      return toSpecParam(param)
+    })
     return this
   }
 
   onSuccess(response) {
     const data = methodsData.get(this)
     data.onSuccess = []
-    toArray(response)
-      .forEach(response => data.onSuccess.push(toSpecResponse(data.parent, response, 200)))
-    data.spec.responses = Object.assign({},
-      data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
-      data.onError.reduce((result, response) => Object.assign(result, response), {}))
+    toArray(response).forEach(response =>
+      data.onSuccess.push(toSpecResponse(data.parent, response, 200))
+    )
+    data.spec.responses = Object.assign(
+        {},
+        data.onSuccess.reduce(
+            (result, response) => Object.assign(result, response),
+            {}
+        ),
+        data.onError.reduce(
+            (result, response) => Object.assign(result, response),
+            {}
+        )
+    )
     return this
   }
 
   onError(response) {
     const data = methodsData.get(this)
     data.onError = []
-    toArray(response)
-      .forEach(response => data.onError.push(toSpecResponse(data.parent, response, 400)))
-    data.spec.responses = Object.assign({},
-      data.onSuccess.reduce((result, response) => Object.assign(result, response), {}),
-      data.onError.reduce((result, response) => Object.assign(result, response), {}))
+    toArray(response).forEach(response =>
+      data.onError.push(toSpecResponse(data.parent, response, 400))
+    )
+    data.spec.responses = Object.assign(
+        {},
+        data.onSuccess.reduce(
+            (result, response) => Object.assign(result, response),
+            {}
+        ),
+        data.onError.reduce(
+            (result, response) => Object.assign(result, response),
+            {}
+        )
+    )
     return this
   }
 
@@ -141,106 +160,93 @@ const specsData = new WeakMap()
 class Spec {
   constructor(options) {
     options = options || {}
-
-    let spec = options.spec
-
-    /*eslint-disable*/
-    let dirname = options.__dirname
-    /*eslint-enable*/
-
+    const spec = options.spec
+    const dirname = options.__dirname
     const pack = require(findUp('package.json', {
       cwd: dirname || path.dirname(module.parent.filename)
     }))
-
-    let it = {}
-    it.spec = extend({
-      swagger: '2.0',
-      info: {
-        title: titleCase(pack.name),
-        description: pack.description,
-        version: pack.version,
-        contact: {
-          name: pack.author && pack.author.name
+    const it = {}
+    it.spec = extend(
+        {
+          swagger: '2.0',
+          info: {
+            title: titleCase(pack.name),
+            description: pack.description,
+            version: pack.version,
+            contact: {
+              name: pack.author && pack.author.name
+            },
+            license: {
+              name: pack.private === true ? 'Proprietary' : pack.license
+            }
+          },
+          produces: ['application/json', 'text/plain; charset=utf-8'],
+          schemes: ['https'],
+          securityDefinitions: {
+            internalApiKey: {
+              type: 'apiKey',
+              name: 'api_key',
+              in: 'header'
+            }
+          }
         },
-        license: {
-          name: pack.private === true
-            ? 'Proprietary'
-            : pack.license
-        }
-      },
-      produces: [
-        'application/json',
-        'text/plain; charset=utf-8'
-      ],
-      schemes: [
-        'https'
-      ],
-      securityDefinitions: {
-        internalApiKey: {
-          type: 'apiKey',
-          name: 'api_key',
-          in: 'header'
-        }
-      }
-    }, spec)
-
-    it.spec.paths = spec && spec.paths || {}
-    it.spec.definitions = spec && spec.definitions || {}
+        spec
+    )
+    it.spec.paths = (spec && spec.paths) || {}
+    it.spec.definitions = (spec && spec.definitions) || {}
     specsData.set(this, it)
   }
 
   setBasePath(basePath) {
-    let it = specsData.get(this)
+    const it = specsData.get(this)
     it.spec.basePath = basePath
   }
 
   addDefinition(name, definition) {
-    let it = specsData.get(this)
+    const it = specsData.get(this)
     it.spec.definitions[name] = toJsonSchema(definition)
   }
 
   addMethod(path, method) {
-    let it = specsData.get(this)
+    const it = specsData.get(this)
     path = path.replace(/\:(\w*)/g, (match, name) => `{${name}}`)
     it.spec.paths[path] = it.spec.paths[path] || {}
-    assert(it.spec.paths[path][method]
-           === void 0, `Method ${method} already defined for path ${path}`)
-// eslint-disable-next-line no-return-assign
-    return new Method(it.spec.paths[path][method] = {}, path, method, this)
+    assert(
+        it.spec.paths[path][method] === void 0,
+        `Method ${method} already defined for path ${path}`
+    )
+    return new Method((it.spec.paths[path][method] = {}), path, method, this)
   }
 
-// eslint-disable-next-line space-before-function-paren
   get() {
     return specsData.get(this).spec
   }
-
 }
 
 const routersData = new WeakMap()
 
 class Router {
-
   constructor(options) {
     options = options || {}
-    let prefix = options.prefix
-    let router = new KoaRouter()
-    let spec = new Spec(options)
+    const prefix = options.prefix
+    const router = new KoaRouter()
+    const spec = new Spec(options)
     routersData.set(this, {prefix, spec, router})
   }
 
-  param() {
+  param(...args) {
     const router = routersData.get(this).router
-    return router.param.apply(router, arguments)
+    return router.param.apply(router, args)
   }
 
-  use() {
+  use(...args) {
     const router = routersData.get(this).router
-    return router.use.apply(router, arguments)
+    return router.use.apply(router, args)
   }
 
-  allowedMethods() {
+  allowedMethods(...args) {
     const router = routersData.get(this).router
-    return router.allowedMethods.apply(router, arguments)
+    return router.allowedMethods.apply(router, args)
   }
 
   get spec() {
@@ -250,13 +256,18 @@ class Router {
   userSpec() {
     const it = routersData.get(this)
     return async ctx => {
-      const spec = await stripNotAuthorizedActions(ctx, it.prefix, it.spec.get())
+      const spec = await stripNotAuthorizedActions(
+          ctx,
+          it.prefix,
+          it.spec.get()
+      )
       spec.host = ctx.host
       const definition = ctx.query.definition
       if (definition) {
-        ctx.body = definition in spec.definitions
-          ? spec.definitions[definition]
-          : undefined
+        ctx.body =
+          definition in spec.definitions
+            ? spec.definitions[definition]
+            : undefined
       } else {
         ctx.body = spec
       }
@@ -264,41 +275,36 @@ class Router {
   }
 
   routes() {
-    this
-      .get('/spec', this.userSpec())
-      .params({
-        in: 'query',
-        name: 'definition',
-        description: 'Fetch only the requested definition'
-      })
-      .onSuccess({
-        description: 'A swagger specification or definition'
-      })
+    this.get('/spec', this.userSpec())
+        .params({
+          in: 'query',
+          name: 'definition',
+          description: 'Fetch only the requested definition'
+        })
+        .onSuccess({
+          description: 'A swagger specification or definition'
+        })
     return routersData.get(this).router.routes()
   }
-
 }
 
 function normalizeResource(prefix, resource) {
   resource = resource.replace(/\:(\w*)/g, () => '*')
-  return prefix
-    ? `/${prefix}${resource}`
-    : `${resource}`
+  return prefix ? `/${prefix}${resource}` : `${resource}`
 }
 
 async function stripNotAuthorizedActions(ctx, prefix, spec) {
-
-  let strip = async function() {
+  const strip = async function() {
     spec = Object.assign({}, spec)
 
-    let paths = {}
-    let pathsKeys = Object.keys(spec.paths)
+    const paths = {}
+    const pathsKeys = Object.keys(spec.paths)
     for (let i = 0; i < pathsKeys.length; i++) {
-      let path = pathsKeys[i]
-      let methods = {}
-      let methodsKeys = Object.keys(spec.paths[path])
+      const path = pathsKeys[i]
+      const methods = {}
+      const methodsKeys = Object.keys(spec.paths[path])
       for (let j = 0; j < methodsKeys.length; j++) {
-        let method = methodsKeys[j]
+        const method = methodsKeys[j]
         try {
           const request = {
             method,
@@ -314,16 +320,19 @@ async function stripNotAuthorizedActions(ctx, prefix, spec) {
           }
         }
       }
+
       if (Object.keys(methods).length) {
         paths[path] = methods
       }
     }
 
-    let definitions = {}
+    const definitions = {}
+
     const refs = jsonRefs.findRefs(paths)
+
     Object.keys(refs).forEach(key => {
-      let values = jsonRefs.pathFromPtr(refs[key].uri)
-      let definition = values[1]
+      const values = jsonRefs.pathFromPtr(refs[key].uri)
+      const definition = values[1]
       definitions[definition] = spec.definitions[definition]
     })
 
@@ -332,15 +341,13 @@ async function stripNotAuthorizedActions(ctx, prefix, spec) {
     return spec
   }
 
-  return !ctx.state.authorize
-    ? spec
-    : await strip()
+  return !ctx.state.authorize ? spec : await strip()
 }
 
 methods.forEach(function(method) {
   Router.prototype[method] = function(path, middleware) {
-    let it = routersData.get(this)
-    let thisMethod = it.spec.addMethod(path, method)
+    const it = routersData.get(this)
+    const thisMethod = it.spec.addMethod(path, method)
     const normalizedResource = normalizeResource(it.prefix, path)
     const thisMethodSpec = thisMethod.spec
     const generator = isGeneratorFunction(middleware)
@@ -365,20 +372,21 @@ methods.forEach(function(method) {
         }
 
         if (ctx.body !== void 0) {
-          let successStatus = thisMethod.successStatuses()
+          const successStatus = thisMethod.successStatuses()
           if (successStatus.indexOf(ctx.status) === -1) {
             ctx.status = successStatus[0]
           }
         }
       } catch (e) {
         ctx.status = e.status || 500
-        let errors = thisMethod.errors()
+        const errors = thisMethod.errors()
         let caught = false
         errors.forEach(error => {
           error.catch.forEach(fn => {
-            if (!caught && (typeof fn === 'string'
-                ? e.name.startsWith(fn)
-                : fn(e))) {
+            if (
+              !caught &&
+              (typeof fn === 'string' ? e.name.startsWith(fn) : fn(e))
+            ) {
               ctx.status = error.status
               ctx.body = error.show(e, ctx)
               caught = true
@@ -396,28 +404,23 @@ methods.forEach(function(method) {
 })
 
 function toArray(any) {
-  return any
-    ? Array.isArray(any)
-      ? any
-      : [any]
-    : []
+  return any ? (Array.isArray(any) ? any : [any]) : []
 }
 
 function toSpecParam(param) {
-  let specParam = {}
+  const specParam = {}
   specParam.in = param.in || 'query'
   specParam.name = param.name
   specParam.description = param.description || ''
-  specParam.required = specParam.in === 'path'
-    ? true
-    : param.required === true
-      || false
+  specParam.required =
+    specParam.in === 'path' ? true : param.required === true || false
   if (param.schema) {
-    specParam.schema = typeof param.schema === 'string'
-      ? {
-        $ref: `#/definitions/${param.schema}`
-      }
-      : param.schema
+    specParam.schema =
+      typeof param.schema === 'string'
+        ? {
+          $ref: `#/definitions/${param.schema}`
+        }
+        : param.schema
     if (param.type === 'array') {
       specParam.items = specParam.schema
       delete specParam.schema
@@ -434,8 +437,8 @@ function toSpecParam(param) {
 }
 
 function toSpecResponse(spec, response, status) {
-  let specResponse = {}
-  let statusObject = specResponse[response.status || status] = {}
+  const specResponse = {}
+  const statusObject = (specResponse[response.status || status] = {})
   Object.defineProperty(statusObject, 'name', {
     value: response.name,
     writable: true
@@ -465,10 +468,8 @@ function toSpecResponse(spec, response, status) {
     statusObject.name = response.name || response.schema
     delete response.items
   }
-  statusObject.description = response.description || (status
-                                                      >= 400
-    ? 'Error'
-    : 'Success')
+  statusObject.description =
+    response.description || (status >= 400 ? 'Error' : 'Success')
   if (status >= 400) {
     Object.defineProperty(statusObject, 'show', {
       value: response.show || (error => ({message: error.message}))
@@ -482,24 +483,31 @@ function toSpecResponse(spec, response, status) {
 
 function toJsonSchema(schema, level) {
   level = level || 0
-  let definition = {}
+  const definition = {}
   Object.keys(schema).forEach(function(key) {
     const value = schema[key]
     if (level === 0) {
-      if (['properties', 'title', 'description', 'type']
-            .indexOf(key) === -1) {
+      if (['properties', 'title', 'description', 'type'].indexOf(key) === -1) {
         key = 'x-' + key
       }
     } else {
-      if (['properties', 'title', 'description', 'type', 'schema', 'items']
-            .indexOf(key) === -1) {
+      if (
+        [
+          'properties',
+          'title',
+          'description',
+          'type',
+          'schema',
+          'items'
+        ].indexOf(key) === -1
+      ) {
         key = 'x-' + key
       }
     }
     switch (typeof value) {
-      //case 'function':
+      // case 'function':
       //  break;
-      //case 'array':
+      // case 'array':
       //  definition[key] = value.slice(0);
       //  break;
       case 'object':
@@ -511,19 +519,30 @@ function toJsonSchema(schema, level) {
   })
   const required = []
   Object.keys(definition.properties).forEach(function(key) {
-    let source = definition.properties[key]
+    const source = definition.properties[key]
     if (source.required === true) {
       required.push(key)
     }
-    let property = {}
+    const property = {}
     Object.keys(source).forEach(function(key) {
       if (key === 'required') {
         return
       }
       const value = source[key]
-      if (['title', 'description', 'type', 'schema', 'properties',
-            '$ref', 'maxLength', 'format', 'enum', 'items']
-            .indexOf(key) === -1) {
+      if (
+        [
+          'title',
+          'description',
+          'type',
+          'schema',
+          'properties',
+          '$ref',
+          'maxLength',
+          'format',
+          'enum',
+          'items'
+        ].indexOf(key) === -1
+      ) {
         key = 'x-' + key
       }
       property[key] = value
@@ -545,15 +564,14 @@ function toJsonSchema(schema, level) {
           property.items = {}
           Object.keys(source.items).forEach(function(key) {
             const value = source.items[key]
-            if (['type']
-                  .indexOf(key) === -1) {
+            if (['type'].indexOf(key) === -1) {
               key = 'x-' + key
             }
             property.items[key] = value
           })
         }
       } else if (property.schema) {
-        let schema = {}
+        const schema = {}
         if (property.schema.$ref) {
           schema['x-$ref'] = property.schema.$ref
         }
@@ -573,7 +591,6 @@ function toJsonSchema(schema, level) {
     definition.required = required
   }
   return definition
-
 }
 
 module.exports = Router
