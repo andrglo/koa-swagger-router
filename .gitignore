@@ -1,7 +1,4 @@
 node_modules
-coverage
-.idea
 .history
-
-
+.nyc_output
 yarn-error.log

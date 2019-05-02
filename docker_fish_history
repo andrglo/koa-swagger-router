@@ -1,5 +1,7 @@
 - cmd: yarn upgrade-interactive --latest
    when: 1470615608
+- cmd: nc -zv postgres 5432
+   when: 1470615608
 - cmd: yarn test
    when: 1470615608
 
