@@ -24,7 +24,7 @@
     "json-schema-entity": "^6.1.7",
     "koa": "^2.7.0",
     "mocha": "^6.1.4",
-    "nyc": "^14.0.0",
+    "nyc": "^14.1.0",
     "pg-cr-layer": "^2.0.6",
     "supertest": "^4.0.2",
     "swagger-parser": "^6.0.5"
@@ -40,7 +40,7 @@
     "co-body": "^6.0.0",
     "deep-extend": "^0.6.0",
     "findup-sync": "^3.0.0",
-    "json-refs": "3.0.12",
+    "json-refs": "^3.0.13",
     "koa-router": "^7.4.0",
     "methods": "^1.1.2",
     "title-case": "^2.1.1"
