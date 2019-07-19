@@ -1,6 +1,6 @@
 {
   "name": "koa-swagger-router",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "description": "A koa router that builds a full swagger specification",
   "repository": "https://github.com/andrglo/koa-swagger-router.git",
   "author": {
@@ -18,16 +18,16 @@
   ],
   "devDependencies": {
     "chai": "^4.2.0",
-    "coveralls": "^3.0.4",
-    "eslint": "^5.16.0",
+    "coveralls": "^3.0.5",
+    "eslint": "^6.0.1",
     "eslint-config-google": "^0.13.0",
-    "json-schema-entity": "^6.2.1",
+    "json-schema-entity": "^6.2.3",
     "koa": "^2.7.0",
-    "mocha": "^6.1.4",
+    "mocha": "^6.2.0",
     "nyc": "^14.1.1",
-    "pg-cr-layer": "^2.0.6",
+    "pg-cr-layer": "^2.0.7",
     "supertest": "^4.0.2",
-    "swagger-parser": "^6.0.5"
+    "swagger-parser": "^8.0.0"
   },
   "scripts": {
     "test": "nyc mocha --bail --exit --timeout 15000 test/index.js",
@@ -39,7 +39,7 @@
     "co": "^4.6.0",
     "co-body": "^6.0.0",
     "deep-extend": "^0.6.0",
-    "findup-sync": "^3.0.0",
+    "findup-sync": "^4.0.0",
     "json-refs": "^3.0.13",
     "koa-router": "^7.4.0",
     "methods": "^1.1.2",
