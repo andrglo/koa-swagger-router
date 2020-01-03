@@ -6,7 +6,7 @@ const methods = require('methods')
 const extend = require('deep-extend')
 const path = require('path')
 const findUp = require('findup-sync')
-const titleCase = require('title-case')
+const {titleCase} = require('title-case')
 const jsonRefs = require('json-refs')
 
 const isGenerator = obj =>
