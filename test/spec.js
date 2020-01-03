@@ -268,11 +268,7 @@ module.exports = function(options) {
           .expect(function(res) {
             const record = (charlie = res.body)
             record.should.have.property('name')
-            record.should.have.property('createdAt')
             record.should.have.property('updatedAt')
-            record.createdAt.should.equal(record.updatedAt)
-            expect(record.createdAt).to.be.a('string')
-            expect(record.createdAt >= now).equal(true)
           })
           .end(logError(done))
     })
