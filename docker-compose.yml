@@ -3,7 +3,7 @@ version: '2'
 services:
 
   dms:
-    image: andrglo/everest:12.13.0
+    image: andrglo/everest:12.16.1
     hostname: koa-swagger-router
     command: tail -f /dev/null
     working_dir: /root/koa-swagger-router
@@ -19,7 +19,7 @@ services:
     restart: always
 
   postgres:
-      image: postgres:11.2-alpine
+      image: postgres:12.2-alpine
       environment:
         - POSTGRES_USER=postgres
         - POSTGRES_PASSWORD=postgres
