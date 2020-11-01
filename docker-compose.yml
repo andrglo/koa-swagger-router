@@ -3,7 +3,7 @@ version: '2'
 services:
 
   dms:
-    image: andrglo/everest:12.16.1
+    image: andrglo/everest:12.19.0
     hostname: koa-swagger-router
     command: tail -f /dev/null
     working_dir: /root/koa-swagger-router
