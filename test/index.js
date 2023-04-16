@@ -45,7 +45,7 @@ before(function() {
           return pgOptions.db.connect()
         })
         .then(function() {
-          pgOptions.entity = jse('person', personSchema)
+          pgOptions.entity = jse('person', personSchema, {dialect: 'pg'})
           pgOptions.entity.useTimestamps()
           pgOptions.entity
               .hasMany('person as children', personSchema)
